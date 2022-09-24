@@ -45,6 +45,8 @@ import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 import java.util.Random;
 
+import jeigen.DenseMatrix;
+
 public class ScrollingActivity extends AppCompatActivity {
 
     private ActivityScrollingBinding binding;
@@ -128,6 +130,8 @@ public class ScrollingActivity extends AppCompatActivity {
         snr_range_min_text = (EditText) findViewById(R.id.input_model_import_snr_range_min);
         snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
         num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
+        // TODO: temporary image view, used to test the plot output and test the capture and
+        //  processing functions.
         ImageView image = findViewById(R.id.imageView);
 
         /* Capture Setting Inputs */
@@ -516,31 +520,26 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Result display
     private void tempTestPlot(ImageView image){
-        // Create some data
+        // Setting the matrix size
         int num_freq_bins = 128;
         int num_time_frames = 500;
-        Random random = new Random();
-        double[][] spec_matrix = new double[num_freq_bins][num_time_frames];
-        for (int i = 0; i < num_freq_bins; i++){
-            for (int j = 0; j < num_time_frames; j++){
-                spec_matrix[i][j] = random.nextDouble();
-            }
-        }
-        // normalise the spec_matrix
+        // Creating the matrix
+        DenseMatrix spec_matrix = DenseMatrix.zeros(num_freq_bins, num_time_frames);
+
+        spec_matrix.set(100,50,0.5);
+        spec_matrix.set(100,51,1);
+
+        // Normalise the matrix
         double temp_max = 0;
         for (int i = 0; i < num_freq_bins; i++){
             for (int j = 0; j < num_time_frames; j++){
-                temp_max = Math.max(spec_matrix[i][j], temp_max);
+                temp_max = Math.max(spec_matrix.get(i,j), temp_max);
             }
         }
-        for (int i = 0; i < num_freq_bins; i++){
-            for (int j = 0; j < num_time_frames; j++){
-                spec_matrix[i][j] = spec_matrix[i][j] / temp_max;
-            }
-        }
+//        spec_matrix = spec_matrix.div(temp_max);
 
-        SpectrogramView temp_obj = new SpectrogramView(this, spec_matrix);
-        image.setImageBitmap(temp_obj.bmp);
+        SpectrogramView sp_view_obj = new SpectrogramView(this, spec_matrix, image.getWidth());
+        image.setImageBitmap(sp_view_obj.bmp);
     }
 
     // Data handling
