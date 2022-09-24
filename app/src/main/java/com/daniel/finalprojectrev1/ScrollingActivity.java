@@ -106,6 +106,21 @@ public class ScrollingActivity extends AppCompatActivity {
     // Constants
     private int CAP_QUEUE_SIZE = 50;
 
+    /* Processing Settings */
+    // Inputs
+    private EditText proc_fft_size_input;
+    private EditText proc_sample_rate_input;
+    private EditText proc_num_time_frames_input;
+    private EditText proc_resolution_input;
+    private EditText proc_window_time_input;
+    private EditText proc_hop_time_input;
+    // Values
+    private int proc_fft_size;
+    private int proc_sample_rate;
+    private int proc_num_time_frames;
+    private int proc_resolution;
+    private double proc_window_time;
+    private double proc_hop_time;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,9 +154,19 @@ public class ScrollingActivity extends AppCompatActivity {
         cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
         cap_format_input = (Spinner) findViewById(R.id.input_cap_format_option);
 
+        /* Processing Setting Inputs */
+        proc_fft_size_input = (EditText) findViewById(R.id.input_proc_fft_size);
+        proc_sample_rate_input = (EditText) findViewById(R.id.input_proc_sample_rate);
+        proc_num_time_frames_input = (EditText) findViewById(R.id.input_proc_num_time_frames);
+        proc_resolution_input = (EditText) findViewById(R.id.input_proc_resolution);
+        proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
+        proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
+
         /* Floating Action Button Logic */
         FloatingActionButton fab = binding.fab;
         fab.setOnClickListener(view -> {
+
+            // Importing input user settings and checking if these settings are valid
             if (!convertSettingInputs()) {
                 Snackbar.make(view, "Settings are not valid", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
@@ -167,6 +192,9 @@ public class ScrollingActivity extends AppCompatActivity {
                 fab.setImageResource(android.R.drawable.ic_media_pause);
                 // Configure capture system
                 configureCapture();
+                // Configure processing system
+                // TODO: implement this method
+                configureProcessing();
                 // Update UI fields
                 uiFieldUpdate();
                 //            // Configure detection system
@@ -175,6 +203,8 @@ public class ScrollingActivity extends AppCompatActivity {
                 //            configureMonitor();
                 // Starting the sub-systems
                 startCapture();
+                // TODO: implement this method - first do configureProcessing
+                startProcessing();
                 //            startDetection();
                 // Display results
                 tempTestPlot(image);
@@ -224,6 +254,13 @@ public class ScrollingActivity extends AppCompatActivity {
         cap_time_interval = model_clip_len;
         cap_format = AUDIO_FORMAT_INT16;
         String selected_audio_format = cap_format_input.getSelectedItem().toString();
+        // Loading defaults - processing settings
+        proc_fft_size = Integer.parseInt(proc_fft_size_input.getHint().toString());
+        proc_sample_rate = cap_sample_rate;
+        proc_num_time_frames = model_clip_len * proc_sample_rate;
+        proc_resolution = proc_sample_rate * proc_fft_size;
+        proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
+        proc_hop_time = proc_window_time / 2.0;
 
         // Processing User Inputs
         // Model import settings
@@ -241,6 +278,17 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             cap_format = AUDIO_FORMAT_FLOAT;
         }
+        // Processing Settings
+        if (!TextUtils.isEmpty(proc_fft_size_input.getText())) {
+            proc_fft_size = Integer.parseInt(proc_fft_size_input.getText().toString());
+        }
+        if (!TextUtils.isEmpty(proc_sample_rate_input.getText())) {
+            proc_sample_rate = Integer.parseInt(proc_sample_rate_input.getText().toString());
+        }
+        proc_num_time_frames = model_clip_len * proc_sample_rate;
+        proc_resolution = proc_sample_rate * proc_fft_size;
+        proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
+        proc_hop_time = proc_window_time / 2.0;
 
         // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
         //  a system that states which settings are missing or in error. Therefore returning true
@@ -249,6 +297,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void modelFilenameUpdate() {
+
         num_class_events_text.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
@@ -363,6 +412,7 @@ public class ScrollingActivity extends AppCompatActivity {
             public void afterTextChanged(Editable editable) {
             }
         });
+
     }
 
     private void uiFieldUpdate(){
@@ -390,6 +440,13 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             cap_format_input.setSelection(1);
         }
+        // Processing
+        proc_fft_size_input.setText(String.format("%d", proc_fft_size));
+        proc_sample_rate_input.setText(String.format("%d", proc_sample_rate));
+        proc_num_time_frames_input.setText(String.format("%d", proc_num_time_frames));
+        proc_resolution_input.setText(String.format("%d", proc_resolution));
+        proc_window_time_input.setText(String.format("%f", proc_window_time));
+        proc_hop_time_input.setText(String.format("%f", proc_hop_time));
     }
 
     private void configureRunnables(){
@@ -448,6 +505,7 @@ public class ScrollingActivity extends AppCompatActivity {
         // Minimum buffer size
         int min_buffer_size = AudioRecord.getMinBufferSize(cap_sample_rate, AUDIO_CHANNELS,
                 cap_format);
+        // Calculating buffer size
         cap_buffer_size = (int) cap_sample_rate * cap_time_interval * (cap_format /
                 AUDIO_MIN_FORMAT_SIZE);
         // Checking if cap_buffer_size is large enough
@@ -513,6 +571,21 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Processing
+    private void configureProcessing() {
+        // TODO: THIS IS THE CURRENT PART YOU ARE WORKING ON
+        // TODO: Need to setup the processing subsystem.
+        //  this includes the:
+        //  - processing user input stored in the capture buffer
+        //  - so reading data from the buffer (its a queue)
+        //  - processing the data through the various stages
+        //  - creating a spectrogram of the data
+        //  - outputting the spectrogram - THIS IS FOR TESTING, will maybe be in final but not sure
+        //  - REMEMBER THIS METHOD IS FOR CONFIGURATION ONLY - maybe creation of secondary thread?.
+    }
+
+    private void startProcessing(){
+
+    }
 
 
     // Detection

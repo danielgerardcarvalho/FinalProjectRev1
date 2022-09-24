@@ -54,7 +54,6 @@ public class SpectrogramView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-
         canvas.drawBitmap(bmp, 0, 0, paint);
     }
 }

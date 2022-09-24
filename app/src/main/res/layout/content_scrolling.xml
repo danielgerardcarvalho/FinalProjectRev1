@@ -17,6 +17,8 @@
             android:layout_width="match_parent"
             android:layout_height="26dp" />
 
+        <!-- IMPORT SETTINGS -->
+
         <TextView
             android:id="@+id/import_settings_heading_view"
             android:layout_width="match_parent"
@@ -25,7 +27,7 @@
             android:text="@string/model_import_settings_title"
             android:textAlignment="viewStart"
             android:textAllCaps="true"
-            android:textColor="@color/heading_0"
+            android:textColor="@color/heading_2"
             android:textStyle="bold" />
 
         <LinearLayout
@@ -39,7 +41,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/model_num_event_classes"
                 android:textAlignment="textStart"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_model_import_num_event_classes"
@@ -58,7 +60,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/model_num_overlaps"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_model_import_num_overlaps"
@@ -77,7 +79,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/model_clip_len"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_model_import_clip_len"
@@ -96,7 +98,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/model_snr_range"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -133,7 +135,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/model_training_size"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_model_import_training_size"
@@ -152,7 +154,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/model_num_components"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_model_import_num_components"
@@ -171,7 +173,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/model_num_iterations"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_model_import_num_iterations"
@@ -213,6 +215,8 @@
             android:layout_width="match_parent"
             android:layout_height="26dp" />
 
+        <!-- CAPTURE SETTINGS -->
+
         <TextView
             android:id="@+id/cap_setting_heading_view"
             android:layout_width="match_parent"
@@ -221,7 +225,7 @@
             android:text="@string/cap_settings_title"
             android:textAlignment="viewStart"
             android:textAllCaps="true"
-            android:textColor="@color/heading_0"
+            android:textColor="@color/heading_2"
             android:textStyle="bold" />
 
         <LinearLayout
@@ -235,7 +239,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/cap_sample_rate"
                 android:textAlignment="textStart"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_cap_sample_rate"
@@ -254,7 +258,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/cap_time_interval"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <EditText
                 android:id="@+id/input_cap_time_interval"
@@ -273,7 +277,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/cap_format"
-                android:textColor="@color/black" />
+                android:textColor="@color/heading_1" />
 
             <Spinner
                 android:id="@+id/input_cap_format_option"
@@ -284,6 +288,149 @@
 
         </LinearLayout>
 
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
+
+        <!-- PROCESSING SETTINGS -->
+
+        <TextView
+            android:id="@+id/proc_setting_heading_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/proc_settings_title"
+            android:textAlignment="viewStart"
+            android:textAllCaps="true"
+            android:textColor="@color/heading_2"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/view_proc_fft_size"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_fft_size"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_fft_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="1024"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_sample_rate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_sample_rate"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_sample_rate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="optional - (default) Capture sample rate"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_num_time_frames"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_num_time_frames"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_num_time_frames"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="Import clip length x FFT sample rate"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_resolution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_resolution"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_resolution"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="FFT sample rate x FFT size"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_window_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_window_time"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_window_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="FFT size / FFT sample rate"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_hop_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_hop_time"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_hop_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="Window time / 2"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+        </LinearLayout>
 
         <Space
             android:layout_width="match_parent"
@@ -294,6 +441,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
         <!--        <TextView-->
 <!--            android:layout_width="wrap_content"-->
 <!--            android:layout_height="wrap_content"-->

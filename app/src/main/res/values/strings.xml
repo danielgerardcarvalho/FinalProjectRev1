@@ -95,6 +95,7 @@
     <!-- Titles -->
     <string name="model_import_settings_title">\tModel Import Settings</string>
     <string name="cap_settings_title">\tCapture Settings</string>
+    <string name="proc_settings_title">\tProcessing Settings</string>
     <string name="classification_settings_title">\tClassification Settings</string>
     <string name="model_filename_title">\tModel Import Filename:</string>
     <!-- Import Settings-->
@@ -111,6 +112,12 @@
     <string name="cap_num_channels">\tNumber of channels:</string>
     <string name="cap_format">\tCapture Format:</string>
     <!-- Processing Settings -->
+    <string name="proc_fft_size">\tProcessing FFT size:</string>
+    <string name="proc_sample_rate">\tProcessing sample rate:</string>
+    <string name="proc_num_time_frames">\tProcessing number of time frames:</string>
+    <string name="proc_resolution">\tProcessing resolution:</string>
+    <string name="proc_window_time">\tProcessing window time:</string>
+    <string name="proc_hop_time">\tProcessing hop time:</string>
     <!-- Classification Settings -->
 
     <!-- Preference Titles -->
