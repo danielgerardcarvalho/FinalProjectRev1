@@ -638,8 +638,8 @@ public class ScrollingActivity extends AppCompatActivity {
         DenseMatrix melscale_range = new DenseMatrix(frequency_range.rows, 0);
         melscale_range = melscale_range.div(1127).exp().sub(1).mul(700);
 
-        DenseMatrix window;
-        DenseMatrix spec_window;
+        DenseMatrix window = null;
+        DenseMatrix spec_window = null;
         while(mt_audio_processing_flag) {
             // Perform STFT
             stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows, window_coeff,
@@ -684,9 +684,9 @@ public class ScrollingActivity extends AppCompatActivity {
         //  - Append window to spectrogram
         //  - Convert to dB with min value as reference.
 
-        # Retrieving frame from data
-        frame = data[i*hop_size : i*hop_size + window_size] * window_coeff
-    # Calculating the FFT
+    # Retrieving frame from data DONE
+    frame = data[i*hop_size : i*hop_size + window_size] * window_coeff
+    # Calculating the FFT DONE
                 spec_frame = fft(frame)
     # Using only half of the spectrogram
         spec_frame = spec_frame[:int(fft_size/2)]
@@ -724,7 +724,25 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             DenseMatrix data_even = fft(getEvenValues(data));
             DenseMatrix data_odd = fft(getOddValues(data));
-            factor = np.exp(-2j*np.pi*np.arange(sample_len)/sample_len)
+
+            double [] factor_real = new double[size];
+            double [] factor_imag = new double[size];
+            for (int i = 0; i < size; i++){
+                double theta = -2 * Math.PI * i / size;
+                factor_real[i] = Math.cos(theta);
+                factor_imag[i] = Math.sin(theta);
+            }
+
+            DenseMatrixComplex ret;
+            DenseMatrix ret_real = new DenseMatrix(size, 0);
+            DenseMatrix ret_imag = new DenseMatrix(size, 0);
+            for (int i = 0; i < (int)(size/2); i++){
+                ret_real.set(i, data_even.get(i,0));
+            }
+            [
+                    data_even + factor[:sample_len/2] * data_odd
+                    data_even + factor[sample_len/2:] * data_odd
+            ]
 
             data = np.concatenate([data_even+factor[:int(sample_len/2)]*data_odd, data_even+\
             factor[int(sample_len/2):]*data_odd])
