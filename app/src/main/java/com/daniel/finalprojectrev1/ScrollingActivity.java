@@ -46,6 +46,7 @@ import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import java.util.ArrayList;
 
 import jeigen.DenseMatrix;
+import jeigen.DenseMatrixComplex;
 
 public class ScrollingActivity extends AppCompatActivity {
 
@@ -481,9 +482,8 @@ public class ScrollingActivity extends AppCompatActivity {
             public void run() {
                 // Read data from the capture buffer and delete
                 Log.v("AudioProcessing", "Audio pre-processing thread is starting...");
-                while (mt_audio_processing_flag) {
-                    preProcessing();
-                }
+                // The infinite while loop is in preProcessing
+                preProcessing();
                 Log.v("AudioProcessing", "Audio pre-processing thread has been closed");
             }
         };
@@ -621,6 +621,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void preProcessing(){
+
         // Finding window size
         int window_size = (int) Math.ceil(proc_window_time * proc_sample_rate);
         //  Finding hop size
@@ -629,10 +630,50 @@ public class ScrollingActivity extends AppCompatActivity {
         int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
                 window_size) / hop_size)+1;
         //  Finding window coefficients for HANN window
-        double [] window_coeff = window_func(window_size, HANN);
+        DenseMatrix window_coeff = window_func(window_size, HANN);
+//        double [] window_coeff = window_func(window_size, HANN);
+
         //  Finding frequency range and melscale range for conversion
-        int [] frequency_range = createArray(0, (int)(proc_sample_rate / 2.0), proc_resolution);
-        int [] melscale_range = 700 * (expArray(divArray(frequency_range/1127))-1);
+        DenseMatrix frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
+        DenseMatrix melscale_range = new DenseMatrix(frequency_range.rows, 0);
+        melscale_range = melscale_range.div(1127).exp().sub(1).mul(700);
+
+        DenseMatrix window;
+        DenseMatrix spec_window;
+        while(mt_audio_processing_flag) {
+            // Perform STFT
+            stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows, window_coeff,
+                    frequency_range, melscale_range, window, spec_window);
+        }
+    }
+
+    private DenseMatrix window_func(int window_size, int window_type) {
+        DenseMatrix ret = new DenseMatrix(window_size,0);
+
+        // Implementation of the HANN window
+        if (window_type == HANN){
+            for(int i = 0; i < window_size; i++){
+                ret.set(i,0, 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size)));
+            }
+        }
+
+        return ret;
+    }
+
+    private DenseMatrix stft(DenseMatrix data, int window_size, int hop_size, int num_windows,
+                             DenseMatrix window_coeff, DenseMatrix frequency_range,
+                             DenseMatrix melscale_range, DenseMatrix window,
+                             DenseMatrix spec_window) {
+
+        // TODO: Read the value from the capture buffer
+
+        for (int i = 0; i < num_windows; i++) {
+            // Extracting window from data
+            window = getValuesInRange(data, i*hop_size, i * hop_size + window_size).mul(
+                    window_coeff);
+            // Calculating the FFT of the window
+            spec_window = fft(window);
+        }
         //  Enabling Multi-threading
         //  - Extract frame from data
         //  - Calculating the FFT
@@ -642,23 +683,54 @@ public class ScrollingActivity extends AppCompatActivity {
         //  - Convert spectral data to melscale
         //  - Append window to spectrogram
         //  - Convert to dB with min value as reference.
+
+        # Retrieving frame from data
+        frame = data[i*hop_size : i*hop_size + window_size] * window_coeff
+    # Calculating the FFT
+                spec_frame = fft(frame)
+    # Using only half of the spectrogram
+        spec_frame = spec_frame[:int(fft_size/2)]
+    # Scaling the spectrogram values
+        spec_frame = np.abs(spec_frame/(fft_size/2))
+
+    # Converting spectrum to mel scale
+        mel_frame = []
+        mel_temp_frame_array = []
+        mel_count = 0
+        freq_count = 0
+
+        while freq_count < int(fft_size/2):
+        # Checking if in range
+        if freq_range[freq_count] <= mel_range[mel_count]:
+        mel_temp_frame_array.append(spec_frame[freq_count])
+        freq_count += 1
+        else:
+        if len(mel_temp_frame_array) == 0:
+                # mel_frame.append(mel_frame[-1])
+        mel_frame.append(spec_frame[freq_count])
+            else:
+        mel_frame.append(np.mean(mel_temp_frame_array))
+        mel_temp_frame_array = []
+        mel_count += 1
+        mel_frame = np.abs(np.array(mel_frame)/(fft_size/2))
+
+        return mel_frame
     }
 
-    private double [] window_func(int window_size, int window_type) {
-        double [] ret = new double [window_size];
+    private DenseMatrix fft(DenseMatrix data) {
+        int size = data.getValues().length;
+        if (size == 1) {
+            return data;
+        } else {
+            DenseMatrix data_even = fft(getEvenValues(data));
+            DenseMatrix data_odd = fft(getOddValues(data));
+            factor = np.exp(-2j*np.pi*np.arange(sample_len)/sample_len)
 
-        // Implementation of the HANN window
-        if (window_type == HANN){
-            for(int i = 0; i < window_size; i++){
-                ret[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size));
-            }
+            data = np.concatenate([data_even+factor[:int(sample_len/2)]*data_odd, data_even+\
+            factor[int(sample_len/2):]*data_odd])
         }
 
-        return ret;
-    }
-
-    private void stft() {
-
+        return data
     }
 
 
@@ -693,18 +765,103 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Helpers
-    private int[] createArray(int min, int max, int size){
-        int [] temp = new int[size];
-        double dif = (max - min * 1.0) / size;
+    /*
+    * Creates a DenseMatrix, with values inbetween min (inclusive) and max (exclusive), with steps
+    * of size.
+    */
+    private DenseMatrix createArray(double min, double max, int step){
+        int size = (int) Math.ceil((max - min) / step);
+        DenseMatrix temp = new DenseMatrix(size, 0);
 
         for (int i = 0; i < size; i++){
-            temp[i] = (int)(dif * i) + min;
+            temp.set(i,0,(step * i) + min);
         }
 
         return temp;
     }
-    private <T> T divArray(T[] array, T scalar){
 
+    /*
+    * Returns a portion of a DenseMatrix, the range is inclusive to min, and exclusive to max.
+    */
+    private DenseMatrix getValuesInRange(DenseMatrix array, int min, int max) {
+        DenseMatrix ret = new DenseMatrix(max - min, 0);
+        int iter = 0;
+        for(int i = min; i < max; i++){
+            ret.set(iter, array.get(i, 0));
+            iter++;
+        }
+        return ret;
     }
-    private <T> T expArray()
+
+    /*
+    * Converts an array/matrix into a DenseMatrix
+    */
+    private DenseMatrix toDenseMatrix(int[] input) {
+        // Finding the size of the array
+        int size = input.length;
+        // Creating the DenseMatrix
+        DenseMatrix ret = new DenseMatrix(size, 0);
+        // Filling the DenseMatrix
+        for(int i = 0; i < size; i++){
+            ret.set(i, input[i]);
+        }
+
+        return ret;
+    }
+    private DenseMatrix toDenseMatrix(double[] input) {
+        // Finding the size of the array
+        int size = input.length;
+        // Creating the DenseMatrix
+        DenseMatrix ret = new DenseMatrix(size, 0);
+        // Filling the DenseMatrix
+        for(int i = 0; i < size; i++){
+            ret.set(i, input[i]);
+        }
+
+        return ret;
+    }
+
+    /*
+    * Gets the even index values from an array
+    */
+    private DenseMatrix getEvenValues(DenseMatrix array) {
+        DenseMatrix ret;
+        int length = array.getValues().length;
+        if (length % 2 == 0){
+            ret = new DenseMatrix((int)(length/2), 1);
+        } else {
+            ret = new DenseMatrix((int) Math.ceil(length/2.0), 1);
+        }
+
+        // TODO: change to add by two each iter and have checks
+        int iter = 0;
+        for (int i = 0; i < array.getValues().length; i=i+2){
+            ret.set(iter, array.get(i,0));
+            iter++;
+        }
+
+        return ret;
+    }
+
+    /*
+    * Gets the odd index values from an array
+    */
+    private DenseMatrix getOddValues(DenseMatrix array) {
+        DenseMatrix ret;
+        int length = array.getValues().length;
+        if (length % 2 == 0){
+            ret = new DenseMatrix((int)(length/2), 0);
+        } else {
+            ret = new DenseMatrix((int) Math.floor(length/2.0), 0);
+        }
+
+        // TODO: change to add by two each iter and have checks
+        int iter = 0;
+        for (int i = 1; i < array.getValues().length; i=i+2){
+                ret.set(iter, array.get(i,0));
+                iter++;
+        }
+
+        return ret;
+    }
 }
