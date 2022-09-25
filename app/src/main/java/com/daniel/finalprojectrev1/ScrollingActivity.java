@@ -43,7 +43,7 @@ import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
-import java.util.Random;
+import java.util.ArrayList;
 
 import jeigen.DenseMatrix;
 
@@ -74,6 +74,14 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_audio_capture_runnable;
     private boolean mt_audio_capture_flag;
     private byte [][] cap_buffer;
+
+    /* Audio Pre-Processing */
+    // processing constants
+    private final int HANN = 0;
+    // processing multi-threading
+    private Runnable mt_audio_processing_runnable;
+    private boolean mt_audio_processing_flag;
+    private int [] proc_data;
 
     /* Model Import Settings */
     // Inputs
@@ -182,6 +190,9 @@ public class ScrollingActivity extends AppCompatActivity {
 
                 // Stop detection thread
                 // Stop processing thread
+                if (mt_audio_processing_flag){
+                    stopProcessing();
+                }
                 // Stop audio capture thread
                 if (mt_audio_capture_flag){
                     stopCapture();
@@ -460,9 +471,20 @@ public class ScrollingActivity extends AppCompatActivity {
                 while(mt_audio_capture_flag){
                     Log.v("AudioCapture", "Audio read thread is active...");
                     readAudioCaptureBuffer();
-//                    SystemClock.sleep(1000);
                 }
                 Log.v("AudioCapture", "Audio read thread has been closed.");
+            }
+        };
+        // Audio Pre-Processing Runnable
+        mt_audio_processing_runnable = new Runnable() {
+            @Override
+            public void run() {
+                // Read data from the capture buffer and delete
+                Log.v("AudioProcessing", "Audio pre-processing thread is starting...");
+                while (mt_audio_processing_flag) {
+                    preProcessing();
+                }
+                Log.v("AudioProcessing", "Audio pre-processing thread has been closed");
             }
         };
     }
@@ -498,8 +520,6 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Capture
     private void configureCapture() {
-        // Set flags
-        mt_audio_capture_flag = true;
         // Resetting location of cap_queue
         cap_queue_loc = 0;
         // Minimum buffer size
@@ -522,6 +542,8 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void startCapture(){
+        // Set activity flag to true - as the system is starting
+        mt_audio_capture_flag = true;
         // Check if audio interface is in appropriate state
         if (audio_recorder.getState() != AudioRecord.STATE_INITIALIZED){
             Log.e("AudioCapture", "Audio interface is in incorrect state: desired:" +
@@ -562,7 +584,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private void readAudioCaptureBuffer(){
         // Read data from the internal buffer
         int num_read = 0;
-        num_read = audio_recorder.read(cap_buffer[cap_queue_loc], num_read, cap_buffer_size);
+        num_read = audio_recorder.read(cap_buffer[cap_queue_loc], 0, cap_buffer_size);
         // Incrementing the buffer queue location
         cap_queue_loc++;
         Log.d("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
@@ -581,9 +603,61 @@ public class ScrollingActivity extends AppCompatActivity {
         //  - creating a spectrogram of the data
         //  - outputting the spectrogram - THIS IS FOR TESTING, will maybe be in final but not sure
         //  - REMEMBER THIS METHOD IS FOR CONFIGURATION ONLY - maybe creation of secondary thread?.
+
+        //
     }
 
     private void startProcessing(){
+        // Set the activity flag to true as sub-system is starting
+        mt_audio_processing_flag = true;
+
+        // Start pre-processing thread
+        new Thread(mt_audio_processing_runnable).start();
+    }
+
+    private void stopProcessing(){
+        // Starting pre-processing thread
+        mt_audio_processing_flag = false;
+    }
+
+    private void preProcessing(){
+        // Finding window size
+        int window_size = (int) Math.ceil(proc_window_time * proc_sample_rate);
+        //  Finding hop size
+        int hop_size = (int) Math.ceil(proc_hop_time * proc_sample_rate);
+        //  Finding number of windows
+        int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
+                window_size) / hop_size)+1;
+        //  Finding window coefficients for HANN window
+        double [] window_coeff = window_func(window_size, HANN);
+        //  Finding frequency range and melscale range for conversion
+        int [] frequency_range = createArray(0, (int)(proc_sample_rate / 2.0), proc_resolution);
+        int [] melscale_range = 700 * (expArray(divArray(frequency_range/1127))-1);
+        //  Enabling Multi-threading
+        //  - Extract frame from data
+        //  - Calculating the FFT
+        //  - Formatting the FFT Restults
+        //      > half the FFT size
+        //      > scaling the FFT values
+        //  - Convert spectral data to melscale
+        //  - Append window to spectrogram
+        //  - Convert to dB with min value as reference.
+    }
+
+    private double [] window_func(int window_size, int window_type) {
+        double [] ret = new double [window_size];
+
+        // Implementation of the HANN window
+        if (window_type == HANN){
+            for(int i = 0; i < window_size; i++){
+                ret[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size));
+            }
+        }
+
+        return ret;
+    }
+
+    private void stft() {
 
     }
 
@@ -617,4 +691,20 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Data handling
 
+
+    // Helpers
+    private int[] createArray(int min, int max, int size){
+        int [] temp = new int[size];
+        double dif = (max - min * 1.0) / size;
+
+        for (int i = 0; i < size; i++){
+            temp[i] = (int)(dif * i) + min;
+        }
+
+        return temp;
+    }
+    private <T> T divArray(T[] array, T scalar){
+
+    }
+    private <T> T expArray()
 }
