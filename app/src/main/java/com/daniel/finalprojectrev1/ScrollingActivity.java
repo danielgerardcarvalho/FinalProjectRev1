@@ -74,7 +74,9 @@ public class ScrollingActivity extends AppCompatActivity {
     // audio capture multi-threading
     private Runnable mt_audio_capture_runnable;
     private boolean mt_audio_capture_flag;
-    private byte [][] cap_buffer;
+//    private byte [][] cap_buffer;
+    // TODO: Double check that this Array list is a 2d array and not a 1D.
+    private ArrayList<byte[]> cap_buffer;
 
     /* Audio Pre-Processing */
     // processing constants
@@ -82,7 +84,8 @@ public class ScrollingActivity extends AppCompatActivity {
     // processing multi-threading
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
-    private int [] proc_data;
+    private short [] proc_data;
+    private ArrayList<DenseMatrix> proc_melspectrogram;
 
     /* Model Import Settings */
     // Inputs
@@ -215,11 +218,11 @@ public class ScrollingActivity extends AppCompatActivity {
                 //            configureMonitor();
                 // Starting the sub-systems
                 startCapture();
-                // TODO: implement this method - first do configureProcessing
                 startProcessing();
                 //            startDetection();
                 // Display results
-                tempTestPlot(image);
+//                tempTestPlot(image);
+//                tempProcPlot(image);
 
                 system_flag = true;
             }
@@ -270,7 +273,7 @@ public class ScrollingActivity extends AppCompatActivity {
         proc_fft_size = Integer.parseInt(proc_fft_size_input.getHint().toString());
         proc_sample_rate = cap_sample_rate;
         proc_num_time_frames = model_clip_len * proc_sample_rate;
-        proc_resolution = proc_sample_rate * proc_fft_size;
+        proc_resolution = proc_sample_rate / proc_fft_size;
         proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
         proc_hop_time = proc_window_time / 2.0;
 
@@ -298,7 +301,7 @@ public class ScrollingActivity extends AppCompatActivity {
             proc_sample_rate = Integer.parseInt(proc_sample_rate_input.getText().toString());
         }
         proc_num_time_frames = model_clip_len * proc_sample_rate;
-        proc_resolution = proc_sample_rate * proc_fft_size;
+        proc_resolution = proc_sample_rate / proc_fft_size;
         proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
         proc_hop_time = proc_window_time / 2.0;
 
@@ -538,7 +541,8 @@ public class ScrollingActivity extends AppCompatActivity {
         checkPermission(this, this, Manifest.permission.RECORD_AUDIO);
         audio_recorder = new AudioRecord(AUDIO_SOURCES[0], cap_sample_rate, AUDIO_CHANNELS,
                 cap_format, cap_buffer_size);
-        cap_buffer = new byte[CAP_QUEUE_SIZE][cap_buffer_size];
+//        cap_buffer = new byte[CAP_QUEUE_SIZE][cap_buffer_size];
+        cap_buffer = new ArrayList<byte[]>();
     }
 
     private void startCapture(){
@@ -584,7 +588,14 @@ public class ScrollingActivity extends AppCompatActivity {
     private void readAudioCaptureBuffer(){
         // Read data from the internal buffer
         int num_read = 0;
-        num_read = audio_recorder.read(cap_buffer[cap_queue_loc], 0, cap_buffer_size);
+        byte [] temp = new byte[cap_buffer_size];
+        num_read = audio_recorder.read(temp, 0, cap_buffer_size);
+        if (cap_queue_loc == 0) {
+            cap_queue_loc++;
+            return;
+        }
+        cap_buffer.add(temp);
+//        num_read = audio_recorder.read(cap_buffer[cap_queue_loc], 0, cap_buffer_size);
         // Incrementing the buffer queue location
         cap_queue_loc++;
         Log.d("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
@@ -604,7 +615,8 @@ public class ScrollingActivity extends AppCompatActivity {
         //  - outputting the spectrogram - THIS IS FOR TESTING, will maybe be in final but not sure
         //  - REMEMBER THIS METHOD IS FOR CONFIGURATION ONLY - maybe creation of secondary thread?.
 
-        //
+        // Initialise proc_melspectrogram
+        proc_melspectrogram = new ArrayList<DenseMatrix>();
     }
 
     private void startProcessing(){
@@ -631,27 +643,38 @@ public class ScrollingActivity extends AppCompatActivity {
                 window_size) / hop_size)+1;
         //  Finding window coefficients for HANN window
         DenseMatrix window_coeff = window_func(window_size, HANN);
-//        double [] window_coeff = window_func(window_size, HANN);
 
         //  Finding frequency range and melscale range for conversion
         DenseMatrix frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
-        DenseMatrix melscale_range = new DenseMatrix(frequency_range.rows, 0);
-        melscale_range = melscale_range.div(1127).exp().sub(1).mul(700);
+        DenseMatrix melscale_range = frequency_range.div(1127).exp().sub(1).mul(700);
 
+        // Thread infinite loop
         while(mt_audio_processing_flag) {
+            // Wait if no value is available in the buffer
+            while (cap_buffer == null || cap_buffer.size() == 0){
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            // Fetch data from the capture buffer queue
+            byte[] temp = cap_buffer.remove(0);
+            // Converting from bytes to short
+            proc_data = bytesToShort(temp);
             // Perform STFT
-            stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows, window_coeff,
-                    frequency_range, melscale_range);
+            proc_melspectrogram.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
+                    window_coeff, frequency_range, melscale_range));
         }
     }
 
     private DenseMatrix window_func(int window_size, int window_type) {
-        DenseMatrix ret = new DenseMatrix(window_size,0);
+        DenseMatrix ret = new DenseMatrix(window_size,1);
 
         // Implementation of the HANN window
         if (window_type == HANN){
             for(int i = 0; i < window_size; i++){
-                ret.set(i,0, 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size)));
+                ret.set(i, 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size)));
             }
         }
 
@@ -662,10 +685,10 @@ public class ScrollingActivity extends AppCompatActivity {
                              DenseMatrix window_coeff, DenseMatrix frequency_range,
                              DenseMatrix melscale_range) {
 
-        // TODO: Read the value from the capture buffer
         DenseMatrix window;
         DenseMatrixComplex spec_window;
         DenseMatrix real_spec_window;
+        DenseMatrix mel_window = new DenseMatrix(proc_fft_size, num_windows);
 
         for (int i = 0; i < num_windows; i++) {
             // Extracting window from data
@@ -677,47 +700,20 @@ public class ScrollingActivity extends AppCompatActivity {
             spec_window = getValuesInRange(spec_window, 0, spec_window.real().rows);
             // Finding absolute values of complex matrix, scaling
             real_spec_window = divComplexMatrix(spec_window, proc_fft_size/2).abs();
+            // Converting spectrum to melscale
+            double[] temp = specToMel(real_spec_window,frequency_range,melscale_range).getValues();
+            if (i == 0) {
+                mel_window = new DenseMatrix(temp.length, num_windows);
+            }
+            for (int j = 0; j < temp.length; j++) {
+                mel_window.set(j, i, temp[j]);
+            }
         }
-        //  - Extract frame from data DONE
-        //  - Calculating the FFT DONE
-        //  - Formatting the FFT Restults DONE
-        //      > half the FFT size DONE
-        //      > scaling the FFT values DONE
-        //  - Convert spectral data to melscale TODO
-        //  - Append window to spectrogram TODO
-        //  - Convert to dB with min value as reference. TODO
 
-    # Retrieving frame from data // DONE
-    frame = data[i*hop_size : i*hop_size + window_size] * window_coeff
-    # Calculating the FFT // DONE
-                spec_frame = fft(frame)
-    # Using only half of the spectrogram // DONE
-        spec_frame = spec_frame[:int(fft_size/2)]
-    # Scaling the spectrogram values // DONE
-        spec_frame = np.abs(spec_frame/(fft_size/2))
-
-    # Converting spectrum to mel scale //TODO
-        mel_frame = []
-        mel_temp_frame_array = []
-        mel_count = 0
-        freq_count = 0
-
-        while freq_count < int(fft_size/2):
-            # Checking if in range
-            if freq_range[freq_count] <= mel_range[mel_count]:
-            mel_temp_frame_array.append(spec_frame[freq_count])
-            freq_count += 1
-            else:
-            if len(mel_temp_frame_array) == 0:
-                    # mel_frame.append(mel_frame[-1])
-            mel_frame.append(spec_frame[freq_count])
-                else:
-            mel_frame.append(np.mean(mel_temp_frame_array))
-            mel_temp_frame_array = []
-            mel_count += 1
-        mel_frame = np.abs(np.array(mel_frame)/(fft_size/2))
-
-        return mel_frame
+        // TODO: Check the size of mel_window.minOverRows.minOverCols - should be a DenseMatrix of
+        //  size (1,1), which is only one value. Then its just extracted.
+        double reference = mel_window.minOverRows().minOverCols().getValues()[0];
+        return ampToDB(mel_window, reference);
     }
 
     private DenseMatrixComplex fft(DenseMatrix data) {
@@ -730,6 +726,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
             DenseMatrix factor_real = new DenseMatrix(size, 1);
             DenseMatrix factor_imag = new DenseMatrix(size, 1);
+
             for (int i = 0; i < size; i++){
                 double theta = -2 * Math.PI * i / size;
                 factor_real.set(i, Math.cos(theta));
@@ -737,8 +734,12 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
 
+            if (size == 512) {
+                Log.d("TEST", "TEST");
+            }
             DenseMatrixComplex ret1 = addComplexMatrix(mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd),data_even);
             DenseMatrixComplex ret2 = addComplexMatrix(mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd),data_even);
+
             return concatComplexMatrix(ret1, ret2, 0);
         }
     }
@@ -770,31 +771,35 @@ public class ScrollingActivity extends AppCompatActivity {
         SpectrogramView sp_view_obj = new SpectrogramView(this, spec_matrix, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
-
+    private void tempProcPlot(ImageView image) {
+        // Extract spectrogram from the proc_melspectrogram queue
+        if (proc_melspectrogram == null || proc_melspectrogram.size() == 0) {
+            return;
+        }
+        DenseMatrix temp = proc_melspectrogram.remove(0);
+        SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
+        image.setImageBitmap(sp_view_obj.bmp);
+    }
     // Data handling
 
 
-    // Helpers
-    /*
-    * Creates a DenseMatrix, with values inbetween min (inclusive) and max (exclusive), with steps
-    * of size.
-    */
+    /* Helpers */
+    // Creates a DenseMatrix, with values inbetween min (inclusive) and max (exclusive), with steps
+    // of size.
     private DenseMatrix createArray(double min, double max, int step){
         int size = (int) Math.ceil((max - min) / step);
-        DenseMatrix temp = new DenseMatrix(size, 0);
+        DenseMatrix temp = new DenseMatrix(size, 1);
 
         for (int i = 0; i < size; i++){
-            temp.set(i,0,(step * i) + min);
+            temp.set(i,(step * i) + min);
         }
 
         return temp;
     }
 
-    /*
-    * Returns a portion of a DenseMatrix, the range is inclusive to min, and exclusive to max.
-    */
+    // Returns a portion of a DenseMatrix, the range is inclusive to min, and exclusive to max.
     private DenseMatrix getValuesInRange(DenseMatrix array, int min, int max) {
-        DenseMatrix ret = new DenseMatrix(max - min, 0);
+        DenseMatrix ret = new DenseMatrix(max - min, 1);
         int iter = 0;
         for(int i = min; i < max; i++){
             ret.set(iter, array.get(i, 0));
@@ -802,21 +807,123 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
+    // Returns a portion of a DenseMatrixComplex, the range is inclusive to min, exclusive to max.
     private DenseMatrixComplex getValuesInRange(DenseMatrixComplex array, int min, int max){
         DenseMatrix ret_real = getValuesInRange(array.real(), min, max);
         DenseMatrix ret_imag = getValuesInRange(array.imag(), min, max);
-        DenseMatrixComplex ret = new DenseMatrixComplex(ret_real, ret_imag);
+        return new DenseMatrixComplex(ret_real, ret_imag);
+    }
+
+    // Converts frequency spectrum to melscale
+    private DenseMatrix specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
+        int freq_count = 0;
+        int mel_count = 0;
+
+        int mel_temp_avg_iter = 0;
+        DenseMatrix mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
+
+        int mel_scale_spectrum_iter = 0;
+        DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
+        while (freq_count < (int) (proc_fft_size/2)) {
+            // Checking if in range
+            if (freq_range.getValues()[freq_count] <= mel_range.getValues()[mel_count]) {
+                mel_temp_avg_array.set(mel_temp_avg_iter, array.getValues()[freq_count]);
+                mel_temp_avg_iter++;
+                freq_count++;
+            } else {
+                if (mel_temp_avg_iter == 0) {
+                    mel_scale_spectrum.set(mel_scale_spectrum_iter, array.getValues()[freq_count]);
+                } else {
+                    mel_scale_spectrum.set(mel_scale_spectrum_iter, getMean(mel_temp_avg_array,
+                            mel_temp_avg_iter));
+                    mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
+                }
+                mel_scale_spectrum_iter++;
+            }
+        }
+        return mel_scale_spectrum;
+    }
+
+    // Convert from amplitude values to dB values
+    private DenseMatrix ampToDB(DenseMatrix array, double ref) {
+        return ((array.div(ref)).log()).mul(20);
+    }
+
+    // Convert from byte array to short[]
+    private short[] bytesToShort(byte[] array) {
+        short [] ret = new short[(int)(array.length/2)];
+        for (int i = 0; i < array.length; i++) {
+            int index = (int) Math.floor(i/2.0);
+            ret[index] = (short) ((ret[index] << 8) + (array[i] & 0xFF));
+        }
         return ret;
     }
 
-    /*
-    * Converts an array/matrix into a DenseMatrix
-    */
+    // Concatenate two DenseMatrixComplex matrices
+    private DenseMatrixComplex concatComplexMatrix(DenseMatrixComplex mat1, DenseMatrixComplex mat2,
+                                                   int axis) {
+        DenseMatrix real;
+        DenseMatrix imag;
+        // Determine which axis to concatenate upon
+        if (axis == 0){
+            real = new DenseMatrix(mat1.real().rows + mat2.real().rows, mat1.real().cols);
+            imag = new DenseMatrix(mat1.imag().rows + mat2.imag().rows, mat1.imag().cols);
+            int iter = 0;
+            for (int j = 0; j < mat1.real().cols; j++) {
+                int row_iter = 0;
+                for (int i = 0; i < mat1.real().rows + mat2.real().rows; i++) {
+                    if (i < mat1.real().rows){
+                        real.set(iter, mat1.getReal(i, j));
+                        imag.set(iter, mat1.getImag(i, j));
+                    } else {
+                        real.set(iter, mat2.getReal(row_iter, j));
+                        imag.set(iter, mat2.getImag(row_iter, j));
+                        row_iter++;
+                    }
+                    iter++;
+                }
+            }
+        } else {
+            real = new DenseMatrix(mat1.real().rows, mat1.real().cols + mat2.real().cols);
+            imag = new DenseMatrix(mat1.imag().rows, mat1.imag().cols + mat2.imag().cols);
+            int iter = 0;
+            for (int j = 0; j < mat1.real().cols + mat2.real().cols; j++) {
+                int col_iter = 0;
+                for (int i = 0; i < mat1.real().rows; i++) {
+                    if (j < mat1.real().cols){
+                        real.set(iter, mat1.getReal(i, j));
+                        imag.set(iter, mat1.getImag(i, j));
+                    } else {
+                        real.set(iter, mat2.getReal(i, col_iter));
+                        imag.set(iter, mat2.getImag(i, col_iter));
+                        col_iter++;
+                    }
+                    iter++;
+                }
+            }
+        }
+        return new DenseMatrixComplex(real, imag);
+    }
+
+    // Converts an array/matrix into a DenseMatrix (short[])
+    private DenseMatrix toDenseMatrix(short[] input) {
+        // Finding the size of the array
+        int size = input.length;
+        // Creating the DenseMatrix
+        DenseMatrix ret = new DenseMatrix(size, 1);
+        // Filling the DenseMatrix
+        for(int i = 0; i < size; i++){
+            ret.set(i, input[i]);
+        }
+
+        return ret;
+    }
+    // Converts an array/matrix into a DenseMatrix (int[])
     private DenseMatrix toDenseMatrix(int[] input) {
         // Finding the size of the array
         int size = input.length;
         // Creating the DenseMatrix
-        DenseMatrix ret = new DenseMatrix(size, 0);
+        DenseMatrix ret = new DenseMatrix(size, 1);
         // Filling the DenseMatrix
         for(int i = 0; i < size; i++){
             ret.set(i, input[i]);
@@ -824,11 +931,12 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return ret;
     }
+    // Converts an array/matrix into a DenseMatrix (double[])
     private DenseMatrix toDenseMatrix(double[] input) {
         // Finding the size of the array
         int size = input.length;
         // Creating the DenseMatrix
-        DenseMatrix ret = new DenseMatrix(size, 0);
+        DenseMatrix ret = new DenseMatrix(size, 1);
         // Filling the DenseMatrix
         for(int i = 0; i < size; i++){
             ret.set(i, input[i]);
@@ -837,9 +945,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
-    /*
-    * Gets the even/odd index values from an array
-    */
+    // Gets the even index values from an array
     private DenseMatrix getEvenValues(DenseMatrix array) {
         DenseMatrix ret;
         int length = array.getValues().length;
@@ -849,7 +955,6 @@ public class ScrollingActivity extends AppCompatActivity {
             ret = new DenseMatrix((int) Math.ceil(length/2.0), 1);
         }
 
-        // TODO: change to add by two each iter and have checks
         int iter = 0;
         for (int i = 0; i < array.getValues().length; i=i+2){
             ret.set(iter, array.get(i,0));
@@ -858,16 +963,16 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return ret;
     }
+    // Gets the odd index values from an array
     private DenseMatrix getOddValues(DenseMatrix array) {
         DenseMatrix ret;
         int length = array.getValues().length;
         if (length % 2 == 0){
-            ret = new DenseMatrix((int)(length/2), 0);
+            ret = new DenseMatrix((int)(length/2), 1);
         } else {
-            ret = new DenseMatrix((int) Math.floor(length/2.0), 0);
+            ret = new DenseMatrix((int) Math.floor(length/2.0), 1);
         }
 
-        // TODO: change to add by two each iter and have checks
         int iter = 0;
         for (int i = 1; i < array.getValues().length; i=i+2){
                 ret.set(iter, array.get(i,0));
@@ -877,9 +982,16 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
-    /*
-    * Perform operations on one or between two Dense Complex Matrices
-    */
+    //Get the mean of the matrix
+    private double getMean (DenseMatrix array, int size) {
+        DenseMatrix temp = getValuesInRange(array,0, size);
+        // TODO: Check the size of the temp.meanOverCols, this should be only one value,
+        //  if it is, then extract that value from the matrix in this function and return only the
+        //  double.
+        return temp.meanOverCols().getValues()[0];
+    }
+
+    // Performs element wise addition
     private DenseMatrixComplex addComplexMatrix(DenseMatrixComplex arr1,
                                                      DenseMatrixComplex arr2) {
         DenseMatrix real = arr1.real().add(arr2.real());
@@ -887,6 +999,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return new DenseMatrixComplex(real, imag);
     }
+    // Perform element wise multiplication
     private DenseMatrixComplex mulComplexMatrix(DenseMatrixComplex arr1,
                                                      DenseMatrixComplex arr2) {
         DenseMatrix real1 = arr1.real();
@@ -895,9 +1008,9 @@ public class ScrollingActivity extends AppCompatActivity {
         DenseMatrix imag2 = arr2.imag();
 
         // Convert from rectangular form to polar and multiply
-        DenseMatrix r = ((real1.pow(2).add(imag1.pow(2))).sqrt()).mul((real2.pow(2).add(
-                imag2.pow(2))).sqrt());
-        DenseMatrix theta = (tanhArray(imag1.div(real1))).add(tanhArray(imag2.div(real2)));
+        DenseMatrix r = (((real1).pow(2).add((imag1).pow(2))).sqrt()).mul(((real2).pow(2).add(
+                (imag2).pow(2))).sqrt());
+        DenseMatrix theta = (arctanArray(imag1.div(real1))).add(arctanArray(imag2.div(real2)));
 
         // Convert back to rectangular form and combine
         DenseMatrix ret_real = new DenseMatrix(real1.rows, real1.cols);
@@ -909,57 +1022,20 @@ public class ScrollingActivity extends AppCompatActivity {
         return new DenseMatrixComplex(ret_real, ret_imag);
 
     }
+    // Perform element-wise division
     private DenseMatrixComplex divComplexMatrix(DenseMatrixComplex array, int scalar) {
         DenseMatrix real = array.real().div(scalar);
         DenseMatrix imag = array.imag().div(scalar);
         return new DenseMatrixComplex(real, imag);
     }
-    private DenseMatrix tanhArray(DenseMatrix array) {
+    // Perform element-wise tanh
+    private DenseMatrix arctanArray(DenseMatrix array) {
         DenseMatrix ret = new DenseMatrix(array.rows, array.cols);
         for (int i = 0; i < array.getValues().length; i++){
-            ret.set(i, Math.tanh(array.getValues()[i]));
+            ret.set(i, Math.atan(array.getValues()[i]));
         }
 
         return ret;
     }
-    private DenseMatrixComplex concatComplexMatrix(DenseMatrixComplex mat1, DenseMatrixComplex mat2,
-                                                   int axis) {
-        DenseMatrix real;
-        DenseMatrix imag;
-        // Determine which axis to concatenate upon
-        if (axis == 0){
-            real = new DenseMatrix(mat1.real().rows + mat2.real().rows, mat1.real().cols);
-            imag = new DenseMatrix(mat1.imag().rows + mat2.imag().rows, mat1.imag().cols);
-            int iter = 0;
-            for (int j = 0; j < mat1.real().cols; j++) {
-                for (int i = 0; i < mat1.real().rows + mat2.real().rows; i++) {
-                    if (i < mat1.real().rows){
-                        real.set(iter, mat1.getReal(i, j));
-                        imag.set(iter, mat1.getImag(i, j));
-                    } else {
-                        real.set(iter, mat2.getReal(i, j));
-                        imag.set(iter, mat2.getImag(i, j));
-                    }
-                    iter++;
-                }
-            }
-        } else {
-            real = new DenseMatrix(mat1.real().rows, mat1.real().cols + mat2.real().cols);
-            imag = new DenseMatrix(mat1.imag().rows, mat1.imag().cols + mat2.imag().cols);
-            int iter = 0;
-            for (int j = 0; j < mat1.real().cols + mat2.real().cols; j++) {
-                for (int i = 0; i < mat1.real().rows; i++) {
-                    if (j < mat1.real().cols){
-                        real.set(iter, mat1.getReal(i, j));
-                        imag.set(iter, mat1.getImag(i, j));
-                    } else {
-                        real.set(iter, mat2.getReal(i, j));
-                        imag.set(iter, mat2.getImag(i, j));
-                    }
-                    iter++;
-                }
-            }
-        }
-        return new DenseMatrixComplex(real, imag);
-    }
+
 }

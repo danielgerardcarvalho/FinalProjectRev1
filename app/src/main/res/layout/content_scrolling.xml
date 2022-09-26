@@ -385,7 +385,7 @@
                 android:autoText="false"
                 android:focusable="false"
                 android:ems="10"
-                android:hint="FFT sample rate x FFT size"
+                android:hint="FFT sample rate / FFT size"
                 android:inputType="number"
                 android:singleLine="true"
                 android:textSize="14sp" />
