@@ -703,10 +703,10 @@ public class ScrollingActivity extends AppCompatActivity {
             // Finding absolute values of complex matrix, scaling
             real_spec_window = divComplexMatrix(spec_window, proc_fft_size/2.0).abs();
             // Converting spectrum to melscale
-            // TODO: take out the hard coding here, the arraylist should solve this in anycase, also this is really inefficient XD
-//            double[] temp = real_spec_window.getValues();
-            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
-//            double[] temp = getValuesInRange(toDenseMatrix(specToMel(real_spec_window,frequency_range,melscale_range).getValues()), 0, 148).getValues();
+            double [] temp = (((real_spec_window.div(700)).add(1)).log()).mul(1127).getValues();
+//            ((((real_spec_window.div(1127)).exp()).sub(1)).mul(700));
+//            double [] temp = ((((frequency_range.div(1127)).exp()).sub(1)).mul(700));
+//            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
             if (i == 0) {
                 mel_window = new DenseMatrix(temp.length, num_windows);
             }
@@ -741,7 +741,7 @@ public class ScrollingActivity extends AppCompatActivity {
             DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
 
             DenseMatrixComplex ret1 = addComplexMatrix(mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd), data_even);
-            DenseMatrixComplex ret2 = subComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
+            DenseMatrixComplex ret2 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
 
             return concatComplexMatrix(ret1, ret2, 0);
         }
