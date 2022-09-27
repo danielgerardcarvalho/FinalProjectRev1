@@ -222,7 +222,8 @@ public class ScrollingActivity extends AppCompatActivity {
                 //            startDetection();
                 // Display results
 //                tempTestPlot(image);
-//                tempProcPlot(image);
+                tempProcPlot(image);
+//                tempCapPlot(image);
 
                 system_flag = true;
             }
@@ -646,7 +647,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         //  Finding frequency range and melscale range for conversion
         DenseMatrix frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
-        DenseMatrix melscale_range = frequency_range.div(1127).exp().sub(1).mul(700);
+        DenseMatrix melscale_range = ((((frequency_range.div(1127)).exp()).sub(1)).mul(700));
 
         // Thread infinite loop
         while(mt_audio_processing_flag) {
@@ -688,7 +689,7 @@ public class ScrollingActivity extends AppCompatActivity {
         DenseMatrix window;
         DenseMatrixComplex spec_window;
         DenseMatrix real_spec_window;
-        DenseMatrix mel_window = new DenseMatrix(proc_fft_size, num_windows);
+        DenseMatrix mel_window = new DenseMatrix(1, 1);
 
         for (int i = 0; i < num_windows; i++) {
             // Extracting window from data
@@ -699,13 +700,15 @@ public class ScrollingActivity extends AppCompatActivity {
             // Use only half of the FFT output
             spec_window = getValuesInRange(spec_window, 0, spec_window.real().rows);
             // Finding absolute values of complex matrix, scaling
-            real_spec_window = divComplexMatrix(spec_window, proc_fft_size/2).abs();
+            real_spec_window = divComplexMatrix(spec_window, proc_fft_size/2.0).abs();
             // Converting spectrum to melscale
-            double[] temp = specToMel(real_spec_window,frequency_range,melscale_range).getValues();
+            // TODO: take out the hard coding here, the arraylist should solve this in anycase, also this is really inefficient XD
+            double[] temp = getValuesInRange(toDenseMatrix(specToMel(real_spec_window,frequency_range,melscale_range).getValues()), 0, 148).getValues();
             if (i == 0) {
                 mel_window = new DenseMatrix(temp.length, num_windows);
             }
-            for (int j = 0; j < temp.length; j++) {
+
+            for (int j = 0; j < 148/*temp.length*/; j++) {
                 mel_window.set(j, i, temp[j]);
             }
         }
@@ -719,7 +722,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private DenseMatrixComplex fft(DenseMatrix data) {
         int size = data.getValues().length;
         if (size == 1) {
-            return new DenseMatrixComplex(data, DenseMatrix.zeros(data.rows, 1));
+            return new DenseMatrixComplex(data, DenseMatrix.ones(data.rows, 1));
         } else {
             DenseMatrixComplex data_even = fft(getEvenValues(data));
             DenseMatrixComplex data_odd = fft(getOddValues(data));
@@ -734,11 +737,8 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
 
-            if (size == 512) {
-                Log.d("TEST", "TEST");
-            }
-            DenseMatrixComplex ret1 = addComplexMatrix(mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd),data_even);
-            DenseMatrixComplex ret2 = addComplexMatrix(mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd),data_even);
+            DenseMatrixComplex ret1 = addComplexMatrix(mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd), data_even);
+            DenseMatrixComplex ret2 = subComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
 
             return concatComplexMatrix(ret1, ret2, 0);
         }
@@ -773,13 +773,44 @@ public class ScrollingActivity extends AppCompatActivity {
     }
     private void tempProcPlot(ImageView image) {
         // Extract spectrogram from the proc_melspectrogram queue
-        if (proc_melspectrogram == null || proc_melspectrogram.size() == 0) {
-            return;
-        }
+        while (proc_melspectrogram == null || proc_melspectrogram.size() == 0) {}
         DenseMatrix temp = proc_melspectrogram.remove(0);
+        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", temp.rows, temp.cols, temp.getValues()[0]));
         SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
+    private void tempCapPlot(ImageView image){
+        int width = Math.min(proc_data.length, 22050);
+        int height = 900;
+
+        while (proc_data == null){
+            int i = 0;
+        }
+        int max = 0;
+        for (int i = 0; i < width; i++){
+            if (Math.abs(proc_data[i]) > max)
+                max = Math.abs(proc_data[i]);
+        }
+        // create matrix from proc_data
+        DenseMatrix temp = new DenseMatrix(height, Math.abs(width));
+
+        int iter = (int)(-height/2.0);
+        for (int i = 0; i < height; i++){
+            for (int j = 0; j < width; j++){
+                if ((Math.abs(proc_data[j]/(1.0*max))*(height/2)) >= Math.abs(iter)){
+                    temp.set(i,j,1);
+                } else {
+                    temp.set(i, j, 0);
+                }
+            }
+            iter++;
+        }
+
+        SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
+        image.setImageBitmap(sp_view_obj.bmp);
+    }
+
+
     // Data handling
 
 
@@ -820,9 +851,11 @@ public class ScrollingActivity extends AppCompatActivity {
         int mel_count = 0;
 
         int mel_temp_avg_iter = 0;
+        // TODO: Change these to array lists to improve space use and remove size quess work
         DenseMatrix mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
 
         int mel_scale_spectrum_iter = 0;
+        // TODO: change this to arraylist as well
         DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
         while (freq_count < (int) (proc_fft_size/2)) {
             // Checking if in range
@@ -833,11 +866,18 @@ public class ScrollingActivity extends AppCompatActivity {
             } else {
                 if (mel_temp_avg_iter == 0) {
                     mel_scale_spectrum.set(mel_scale_spectrum_iter, array.getValues()[freq_count]);
+                } else if (mel_temp_avg_iter == 1) {
+                    mel_scale_spectrum.set(mel_scale_spectrum_iter,
+                            mel_temp_avg_array.getValues()[0]);
+                    mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
                 } else {
                     mel_scale_spectrum.set(mel_scale_spectrum_iter, getMean(mel_temp_avg_array,
                             mel_temp_avg_iter));
                     mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
+
                 }
+                mel_count++;
+                mel_temp_avg_iter = 0;
                 mel_scale_spectrum_iter++;
             }
         }
@@ -955,10 +995,13 @@ public class ScrollingActivity extends AppCompatActivity {
             ret = new DenseMatrix((int) Math.ceil(length/2.0), 1);
         }
 
-        int iter = 0;
-        for (int i = 0; i < array.getValues().length; i=i+2){
-            ret.set(iter, array.get(i,0));
-            iter++;
+//        int iter = 0;
+//        for (int i = 0; i < array.getValues().length; i=i+2){
+//            ret.set(iter, array.get(i,0));
+//            iter++;
+//        }
+        for (int i = 0; i < array.getValues().length/2; i++){
+            ret.set(i, array.get(2*i,0));
         }
 
         return ret;
@@ -973,10 +1016,13 @@ public class ScrollingActivity extends AppCompatActivity {
             ret = new DenseMatrix((int) Math.floor(length/2.0), 1);
         }
 
-        int iter = 0;
-        for (int i = 1; i < array.getValues().length; i=i+2){
-                ret.set(iter, array.get(i,0));
-                iter++;
+//        int iter = 0;
+//        for (int i = 1; i < array.getValues().length; i=i+2){
+//                ret.set(iter, array.get(i,0));
+//                iter++;
+//        }
+        for (int i = 0; i < array.getValues().length/2; i++) {
+            ret.set(i, array.get(i*2+1, 0));
         }
 
         return ret;
@@ -996,6 +1042,14 @@ public class ScrollingActivity extends AppCompatActivity {
                                                      DenseMatrixComplex arr2) {
         DenseMatrix real = arr1.real().add(arr2.real());
         DenseMatrix imag = arr1.imag().add(arr2.imag());
+
+        return new DenseMatrixComplex(real, imag);
+    }
+    // Perform element wise subtraction
+    private DenseMatrixComplex subComplexMatrix(DenseMatrixComplex arr1,
+                                                DenseMatrixComplex arr2) {
+        DenseMatrix real = arr1.real().sub(arr2.real());
+        DenseMatrix imag = arr1.imag().sub(arr2.imag());
 
         return new DenseMatrixComplex(real, imag);
     }
@@ -1023,7 +1077,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     }
     // Perform element-wise division
-    private DenseMatrixComplex divComplexMatrix(DenseMatrixComplex array, int scalar) {
+    private DenseMatrixComplex divComplexMatrix(DenseMatrixComplex array, double scalar) {
         DenseMatrix real = array.real().div(scalar);
         DenseMatrix imag = array.imag().div(scalar);
         return new DenseMatrixComplex(real, imag);
