@@ -540,7 +540,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         // Creating audio record object
         checkPermission(this, this, Manifest.permission.RECORD_AUDIO);
-        audio_recorder = new AudioRecord(AUDIO_SOURCES[0], cap_sample_rate, AUDIO_CHANNELS,
+        audio_recorder = new AudioRecord(AUDIO_SOURCES[1], cap_sample_rate, AUDIO_CHANNELS,
                 cap_format, cap_buffer_size);
 //        cap_buffer = new byte[CAP_QUEUE_SIZE][cap_buffer_size];
         cap_buffer = new ArrayList<byte[]>();
@@ -595,6 +595,7 @@ public class ScrollingActivity extends AppCompatActivity {
             cap_queue_loc++;
             return;
         }
+
         cap_buffer.add(temp);
 //        num_read = audio_recorder.read(cap_buffer[cap_queue_loc], 0, cap_buffer_size);
         // Incrementing the buffer queue location
@@ -698,17 +699,19 @@ public class ScrollingActivity extends AppCompatActivity {
             // Calculating the FFT of the window
             spec_window = fft(window);
             // Use only half of the FFT output
-            spec_window = getValuesInRange(spec_window, 0, spec_window.real().rows);
+            spec_window = getValuesInRange(spec_window, 0, proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
             real_spec_window = divComplexMatrix(spec_window, proc_fft_size/2.0).abs();
             // Converting spectrum to melscale
             // TODO: take out the hard coding here, the arraylist should solve this in anycase, also this is really inefficient XD
-            double[] temp = getValuesInRange(toDenseMatrix(specToMel(real_spec_window,frequency_range,melscale_range).getValues()), 0, 148).getValues();
+//            double[] temp = real_spec_window.getValues();
+            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
+//            double[] temp = getValuesInRange(toDenseMatrix(specToMel(real_spec_window,frequency_range,melscale_range).getValues()), 0, 148).getValues();
             if (i == 0) {
                 mel_window = new DenseMatrix(temp.length, num_windows);
             }
 
-            for (int j = 0; j < 148/*temp.length*/; j++) {
+            for (int j = 0; j < temp.length; j++) {
                 mel_window.set(j, i, temp[j]);
             }
         }
@@ -744,6 +747,56 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
+    // Converts frequency spectrum to melscale
+    private double[] specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
+        int freq_count = 0;
+        int mel_count = 0;
+
+        int mel_temp_avg_iter = 0;
+        // TODO: Change these to array lists to improve space use and remove size quess work
+        double mel_temp_avg_array = 0.0;
+//        DenseMatrix mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
+
+//        int mel_scale_spectrum_iter = 0;
+        // TODO: change this to arraylist as well
+        ArrayList<Double> mel_scale_spectrum = new ArrayList<Double>();
+//        DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
+
+        while (freq_count < (int) (proc_fft_size/2)) {
+            // Checking if in range
+            if (freq_range.getValues()[freq_count] <= mel_range.getValues()[mel_count]) {
+                mel_temp_avg_array = mel_temp_avg_array + array.getValues()[freq_count];
+//                mel_temp_avg_array.set(mel_temp_avg_iter, array.getValues()[freq_count]);
+                mel_temp_avg_iter++;
+                freq_count++;
+            } else {
+                if (mel_temp_avg_iter == 0) {
+                    mel_scale_spectrum.add(array.getValues()[freq_count]);
+//                    mel_scale_spectrum.set(mel_scale_spectrum_iter, array.getValues()[freq_count]);
+                } else if (mel_temp_avg_iter == 1) {
+                    mel_scale_spectrum.add(mel_temp_avg_array);
+//                    mel_scale_spectrum.set(mel_scale_spectrum_iter,
+//                            mel_temp_avg_array.getValues()[0]);
+                    mel_temp_avg_array = 0.0;
+                } else {
+                    mel_scale_spectrum.add(mel_temp_avg_array/(mel_temp_avg_iter*1.0));
+//                    mel_scale_spectrum.set(mel_scale_spectrum_iter, getMean(mel_temp_avg_array,
+//                            mel_temp_avg_iter));
+                    mel_temp_avg_array = 0.0;
+
+                }
+                mel_count++;
+                mel_temp_avg_iter = 0;
+//                mel_scale_spectrum_iter++;
+            }
+        }
+        double[] ret = new double[mel_scale_spectrum.size()];
+        for (int i = 0; i < mel_scale_spectrum.size(); i++){
+           ret[i] = mel_scale_spectrum.get(i);
+        }
+        return ret;
+    }
+
 
     // Detection
 
@@ -776,16 +829,16 @@ public class ScrollingActivity extends AppCompatActivity {
         while (proc_melspectrogram == null || proc_melspectrogram.size() == 0) {}
         DenseMatrix temp = proc_melspectrogram.remove(0);
         Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", temp.rows, temp.cols, temp.getValues()[0]));
-        SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
+        SpectrogramView sp_view_obj = new SpectrogramView(this, temp.div(temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempCapPlot(ImageView image){
-        int width = Math.min(proc_data.length, 22050);
-        int height = 900;
-
         while (proc_data == null){
             int i = 0;
+
         }
+        int width = Math.min(proc_data.length, 22050);
+        int height = 900;
         int max = 0;
         for (int i = 0; i < width; i++){
             if (Math.abs(proc_data[i]) > max)
@@ -846,7 +899,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Converts frequency spectrum to melscale
-    private DenseMatrix specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
+    private DenseMatrix specToDenseMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
         int freq_count = 0;
         int mel_count = 0;
 
@@ -1091,5 +1144,4 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return ret;
     }
-
 }
