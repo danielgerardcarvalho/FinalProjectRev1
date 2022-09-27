@@ -184,11 +184,11 @@ public class ScrollingActivity extends AppCompatActivity {
                         .setAction("Action", null).show();
                 return;
             }
-            Snackbar.make(view, "Starting system", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show();
 
             // Check if already running
             if (system_flag){
+                Snackbar.make(view, "Stopping system", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
                 // Change icon image
                 fab.setImageResource(android.R.drawable.ic_media_play);
 
@@ -203,23 +203,28 @@ public class ScrollingActivity extends AppCompatActivity {
                 }
                 system_flag = false;
             } else {
+                Snackbar.make(view, "Starting system", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
                 // Change icon image
                 fab.setImageResource(android.R.drawable.ic_media_pause);
+
                 // Configure capture system
                 configureCapture();
                 // Configure processing system
-                // TODO: implement this method
                 configureProcessing();
-                // Update UI fields
-                uiFieldUpdate();
                 //            // Configure detection system
                 //            configureDetection();
                 //            // Configure monitoring system
                 //            configureMonitor();
+
+                // Update UI fields
+                uiFieldUpdate();
+
                 // Starting the sub-systems
                 startCapture();
                 startProcessing();
                 //            startDetection();
+
                 // Display results
 //                tempTestPlot(image);
                 tempProcPlot(image);
@@ -646,9 +651,11 @@ public class ScrollingActivity extends AppCompatActivity {
         //  Finding window coefficients for HANN window
         DenseMatrix window_coeff = window_func(window_size, HANN);
 
-        //  Finding frequency range and melscale range for conversion
-        DenseMatrix frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
-        DenseMatrix melscale_range = ((((frequency_range.div(1127)).exp()).sub(1)).mul(700));
+        // TODO: (MEL) decide fate of mel-spectrogram things, current implementation is wrong, not
+        //  sure if mel-spectrum is needed at all. (removed in mean-time)
+//        //  Finding frequency range and melscale range for conversion
+//        DenseMatrix frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
+//        DenseMatrix melscale_range = ((((frequency_range.div(1127)).exp()).sub(1)).mul(700));
 
         // Thread infinite loop
         while(mt_audio_processing_flag) {
@@ -665,8 +672,9 @@ public class ScrollingActivity extends AppCompatActivity {
             // Converting from bytes to short
             proc_data = bytesToShort(temp);
             // Perform STFT
+            // TODO: (MEL) removed in mean-time
             proc_melspectrogram.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
-                    window_coeff, frequency_range, melscale_range));
+                    window_coeff/*, frequency_range, melscale_range*/));
         }
     }
 
@@ -683,14 +691,16 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
+    // TODO: (MEL) removed in mean-time.
     private DenseMatrix stft(DenseMatrix data, int window_size, int hop_size, int num_windows,
-                             DenseMatrix window_coeff, DenseMatrix frequency_range,
-                             DenseMatrix melscale_range) {
+                             DenseMatrix window_coeff/*, DenseMatrix frequency_range,
+                             DenseMatrix melscale_range*/) {
 
         DenseMatrix window;
         DenseMatrixComplex spec_window;
-        DenseMatrix real_spec_window;
-        DenseMatrix mel_window = new DenseMatrix(1, 1);
+        DenseMatrix real_spec_window = new DenseMatrix(num_windows, proc_fft_size/2);
+        // TODO: (MEL) removed in mean-time
+//        DenseMatrix mel_window = new DenseMatrix(1, 1);
 
         for (int i = 0; i < num_windows; i++) {
             // Extracting window from data
@@ -701,25 +711,31 @@ public class ScrollingActivity extends AppCompatActivity {
             // Use only half of the FFT output
             spec_window = getValuesInRange(spec_window, 0, proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
-            real_spec_window = divComplexMatrix(spec_window, proc_fft_size/2.0).abs();
-            // Converting spectrum to melscale
-            double [] temp = (((real_spec_window.div(700)).add(1)).log()).mul(1127).getValues();
-//            ((((real_spec_window.div(1127)).exp()).sub(1)).mul(700));
-//            double [] temp = ((((frequency_range.div(1127)).exp()).sub(1)).mul(700));
-//            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
-            if (i == 0) {
-                mel_window = new DenseMatrix(temp.length, num_windows);
+            DenseMatrix temp_real_spec_window = divComplexMatrix(spec_window,
+                    proc_fft_size/2.0).abs();
+            // Adding the window to the spectrogram
+            for (int j = 0; j < real_spec_window.cols; j++){
+                real_spec_window.set(i, j, temp_real_spec_window.getValues()[j]);
             }
 
-            for (int j = 0; j < temp.length; j++) {
-                mel_window.set(j, i, temp[j]);
-            }
+            // TODO: (MEL) removed in mean-time
+//            // Converting spectrum to melscale
+//            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
+//            if (i == 0) {
+//                mel_window = new DenseMatrix(temp.length, num_windows);
+//            }
+//            for (int j = 0; j < temp.length; j++) {
+//                mel_window.set(j, i, temp[j]);
+//            }
         }
 
         // TODO: Check the size of mel_window.minOverRows.minOverCols - should be a DenseMatrix of
         //  size (1,1), which is only one value. Then its just extracted.
-        double reference = mel_window.minOverRows().minOverCols().getValues()[0];
-        return ampToDB(mel_window, reference);
+        real_spec_window = real_spec_window.t().pow(2);
+        double reference = real_spec_window.maxOverRows().maxOverCols().getValues()[0];
+        Log.d("STFT", String.format("Reference min value: %f", reference));
+        DenseMatrix temp = ampToDB(real_spec_window, reference);
+        return temp.add(temp.minOverCols().minOverRows().abs().getValues()[0]);
     }
 
     private DenseMatrixComplex fft(DenseMatrix data) {
@@ -740,7 +756,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
 
-            DenseMatrixComplex ret1 = addComplexMatrix(mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd), data_even);
+            DenseMatrixComplex ret1 = subComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd));
             DenseMatrixComplex ret2 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
 
             return concatComplexMatrix(ret1, ret2, 0);
