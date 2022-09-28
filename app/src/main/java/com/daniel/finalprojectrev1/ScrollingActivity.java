@@ -43,6 +43,8 @@ import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
+import org.ojalgo.array.ComplexArray;
+
 import java.util.ArrayList;
 
 import jeigen.DenseMatrix;
@@ -732,10 +734,11 @@ public class ScrollingActivity extends AppCompatActivity {
         // TODO: Check the size of mel_window.minOverRows.minOverCols - should be a DenseMatrix of
         //  size (1,1), which is only one value. Then its just extracted.
         real_spec_window = real_spec_window.t().pow(2);
-        double reference = real_spec_window.maxOverRows().maxOverCols().getValues()[0];
+        double reference = real_spec_window.minOverRows().minOverCols().getValues()[0];
         Log.d("STFT", String.format("Reference min value: %f", reference));
-        DenseMatrix temp = ampToDB(real_spec_window, reference);
-        return temp.add(temp.minOverCols().minOverRows().abs().getValues()[0]);
+        return ampToDB(real_spec_window, reference);
+//        DenseMatrix temp = ampToDB(real_spec_window, reference);
+//        return temp.add(temp.minOverCols().minOverRows().abs().getValues()[0]);
     }
 
     private DenseMatrixComplex fft(DenseMatrix data) {
@@ -750,13 +753,13 @@ public class ScrollingActivity extends AppCompatActivity {
             DenseMatrix factor_imag = new DenseMatrix(size, 1);
 
             for (int i = 0; i < size; i++){
-                double theta = -2 * Math.PI * i / size;
+                double theta = 2 * Math.PI * i / size;
                 factor_real.set(i, Math.cos(theta));
-                factor_imag.set(i, Math.sin(theta));
+                factor_imag.set(i, -1*Math.sin(theta));
             }
             DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
 
-            DenseMatrixComplex ret1 = subComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd));
+            DenseMatrixComplex ret1 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd));
             DenseMatrixComplex ret2 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
 
             return concatComplexMatrix(ret1, ret2, 0);
@@ -844,8 +847,14 @@ public class ScrollingActivity extends AppCompatActivity {
         // Extract spectrogram from the proc_melspectrogram queue
         while (proc_melspectrogram == null || proc_melspectrogram.size() == 0) {}
         DenseMatrix temp = proc_melspectrogram.remove(0);
-        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", temp.rows, temp.cols, temp.getValues()[0]));
-        SpectrogramView sp_view_obj = new SpectrogramView(this, temp.div(temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
+        for (int i = temp.rows-1; i >= 0; i--){
+            for (int j = 0; j < temp.cols; j++) {
+                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
+            }
+        }
+        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
+        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempCapPlot(ImageView image){
@@ -966,6 +975,11 @@ public class ScrollingActivity extends AppCompatActivity {
             ret[index] = (short) ((ret[index] << 8) + (array[i] & 0xFF));
         }
         return ret;
+
+//        for (int i = 0; 2*i+1 < array.length; i++){
+//            ret[i] = (short) (((array[2*i+1] & 0xff) << 8) | (array[2*i] & 0xff));
+//        }
+//        return ret;
     }
 
     // Concatenate two DenseMatrixComplex matrices
@@ -1130,20 +1144,22 @@ public class ScrollingActivity extends AppCompatActivity {
         DenseMatrix real2 = arr2.real();
         DenseMatrix imag2 = arr2.imag();
 
-        // Convert from rectangular form to polar and multiply
-        DenseMatrix r = (((real1).pow(2).add((imag1).pow(2))).sqrt()).mul(((real2).pow(2).add(
-                (imag2).pow(2))).sqrt());
-        DenseMatrix theta = (arctanArray(imag1.div(real1))).add(arctanArray(imag2.div(real2)));
+//        // Convert from rectangular form to polar and multiply
+//        DenseMatrix r = ((((real1).pow(2)).add((imag1).pow(2))).sqrt()).mul((((real2).pow(2)).add(
+//                (imag2).pow(2))).sqrt());
+//        DenseMatrix theta = (arctanArray(imag1.div(real1))).add(arctanArray(imag2.div(real2)));
+//
+//        // Convert back to rectangular form and combine
+//        DenseMatrix ret_real = new DenseMatrix(real1.rows, real1.cols);
+//        DenseMatrix ret_imag = new DenseMatrix(real1.rows, real1.cols);
+//        for (int i = 0; i < r.getValues().length; i++) {
+//            ret_real.set(i, r.getValues()[i] * Math.cos(theta.getValues()[i]));
+//            ret_imag.set(i, r.getValues()[i] * -1*Math.sin(theta.getValues()[i]));
+//        }
+//        return new DenseMatrixComplex(ret_real, ret_imag);
 
-        // Convert back to rectangular form and combine
-        DenseMatrix ret_real = new DenseMatrix(real1.rows, real1.cols);
-        DenseMatrix ret_imag = new DenseMatrix(real1.rows, real1.cols);
-        for (int i = 0; i < r.getValues().length; i++) {
-            ret_real.set(i, r.getValues()[i] * Math.cos(theta.getValues()[i]));
-            ret_imag.set(i, r.getValues()[i] * Math.sin(theta.getValues()[i]));
-        }
-        return new DenseMatrixComplex(ret_real, ret_imag);
-
+        DenseMatrixComplex ret = new DenseMatrixComplex((real1.mul(real2).sub(imag1.mul(imag2))), (real1.mul(real2).add(imag1.mul(imag2))));
+        return ret;
     }
     // Perform element-wise division
     private DenseMatrixComplex divComplexMatrix(DenseMatrixComplex array, double scalar) {
