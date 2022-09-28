@@ -3,6 +3,7 @@ package com.daniel.finalprojectrev1;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -14,9 +15,15 @@ import android.media.MediaRecorder;
 import android.os.Bundle;
 
 import com.google.android.material.appbar.CollapsingToolbarLayout;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContract;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -30,11 +37,13 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,6 +54,10 @@ import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 import org.ojalgo.array.ComplexArray;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import jeigen.DenseMatrix;
@@ -75,6 +88,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private AudioRecord audio_recorder;
     // audio capture multi-threading
     private Runnable mt_audio_capture_runnable;
+    private Runnable mt_file_capture_runnable;
     private boolean mt_audio_capture_flag;
 //    private byte [][] cap_buffer;
     // TODO: Double check that this Array list is a 2d array and not a 1D.
@@ -110,12 +124,16 @@ public class ScrollingActivity extends AppCompatActivity {
     // Inputs
     private EditText cap_sample_rate_input;
     private EditText cap_time_interval_input;
+    private Button cap_file_import_select_input;
     private Spinner cap_format_input;
     // Values
     private int cap_sample_rate;
     private int cap_time_interval;
     private int cap_buffer_size;
     private int cap_queue_loc;
+    private boolean cap_file_import_flag;
+    private File cap_imported_file;
+    private FileInputStream cap_imported_file_stream;
     private int cap_format;
     // Constants
     private int CAP_QUEUE_SIZE = 50;
@@ -148,6 +166,17 @@ public class ScrollingActivity extends AppCompatActivity {
         CollapsingToolbarLayout toolBarLayout = binding.toolbarLayout;
         toolBarLayout.setTitle(getTitle());
 
+        /* Configure User Selection Register */
+        ActivityResultLauncher<Intent> activity_launcher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK){
+                    String file_loc = result.getData().getData().getPath();
+                    Log.v("UserFileSelect", file_loc);
+
+                }
+            });
+
         /* Configure Runnables */
         configureRunnables();
 
@@ -166,6 +195,7 @@ public class ScrollingActivity extends AppCompatActivity {
         /* Capture Setting Inputs */
         cap_sample_rate_input = (EditText) findViewById(R.id.input_cap_sample_rate);
         cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
+        cap_file_import_select_input = (Button) findViewById(R.id.input_cap_file_import_select);
         cap_format_input = (Spinner) findViewById(R.id.input_cap_format_option);
 
         /* Processing Setting Inputs */
@@ -175,6 +205,19 @@ public class ScrollingActivity extends AppCompatActivity {
         proc_resolution_input = (EditText) findViewById(R.id.input_proc_resolution);
         proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
         proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
+
+        /* File import button logic*/
+        cap_file_import_select_input.setOnClickListener(button -> {
+            if (!cap_file_import_flag){
+                cap_file_import_flag = true;
+            }
+//            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+//            intent.addCategory(Intent.CATEGORY_OPENABLE);
+//            intent.setType("*/*");
+//            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+//            startActivityForResult(intent, 0);
+            getUserSelectedFile(activity_launcher);
+        });
 
         /* Floating Action Button Logic */
         FloatingActionButton fab = binding.fab;
@@ -229,8 +272,8 @@ public class ScrollingActivity extends AppCompatActivity {
 
                 // Display results
 //                tempTestPlot(image);
-                tempProcPlot(image);
-//                tempCapPlot(image);
+//                tempProcPlot(image);
+                tempCapPlot(image);
 
                 system_flag = true;
             }
@@ -262,6 +305,18 @@ public class ScrollingActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data){
+        if (data == null) {
+            return;
+        }
+        if (data.getClipData() == null) {
+            cap_imported_file = new File (data.getData().getPath());
+        } else {
+            cap_imported_file = new File(data.getClipData().getItemAt(0).getUri().getPath());
+        }
     }
 
     private boolean convertSettingInputs() {
@@ -301,6 +356,7 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             cap_format = AUDIO_FORMAT_FLOAT;
         }
+
         // Processing Settings
         if (!TextUtils.isEmpty(proc_fft_size_input.getText())) {
             proc_fft_size = Integer.parseInt(proc_fft_size_input.getText().toString());
@@ -436,6 +492,10 @@ public class ScrollingActivity extends AppCompatActivity {
             }
         });
 
+        cap_file_import_flag = false;
+        cap_imported_file = null;
+        cap_imported_file_stream = null;
+
     }
 
     private void uiFieldUpdate(){
@@ -485,6 +545,18 @@ public class ScrollingActivity extends AppCompatActivity {
                     readAudioCaptureBuffer();
                 }
                 Log.v("AudioCapture", "Audio read thread has been closed.");
+            }
+        };
+        // File Capture Runnable
+        mt_file_capture_runnable = new Runnable() {
+            @Override
+            public void run() {
+                Log.v("FileCapture", "File read thread is starting...");
+                while (mt_audio_capture_flag){
+                    Log.v("FileCapture", "File read thread is active...");
+                    readFileCaptureBuffer();
+                }
+                Log.v("FileCapture", "File read thread has been closed.");
             }
         };
         // Audio Pre-Processing Runnable
@@ -549,8 +621,33 @@ public class ScrollingActivity extends AppCompatActivity {
         checkPermission(this, this, Manifest.permission.RECORD_AUDIO);
         audio_recorder = new AudioRecord(AUDIO_SOURCES[1], cap_sample_rate, AUDIO_CHANNELS,
                 cap_format, cap_buffer_size);
+        // Buffer initialisation
 //        cap_buffer = new byte[CAP_QUEUE_SIZE][cap_buffer_size];
         cap_buffer = new ArrayList<byte[]>();
+        if (cap_file_import_flag){
+            // Convert the File to input stream
+            try {
+                cap_imported_file_stream = new FileInputStream(cap_imported_file);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void getUserSelectedFile(ActivityResultLauncher<Intent> activity_launcher){
+//        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+//        ActivityResultLauncher<Intent> activity_launcher = registerForActivityResult(
+//            new ActivityResultContracts.StartActivityForResult(),
+//                result -> {
+//                    if (result.getResultCode() == Activity.RESULT_OK) {
+//                        cap_imported_file = new File(result.getData().getData().getPath());
+//                    }
+//                });
+//        activity_launcher.launch(intent);
+        Intent file_intent = new Intent(Intent.ACTION_GET_CONTENT);
+        file_intent.addCategory(Intent.CATEGORY_OPENABLE);
+        file_intent.setType("*/*");
+        activity_launcher.launch(file_intent);
     }
 
     private void startCapture(){
@@ -562,6 +659,13 @@ public class ScrollingActivity extends AppCompatActivity {
                     "initialised");
             return;
         }
+        // Check if file is imported
+        if (cap_file_import_flag){
+            Log.d("Capture", "File mode is active");
+            new Thread(mt_file_capture_runnable).start();
+            return;
+        }
+        Log.d("Capture", "Audio mode is active");
         // Starting recording interface
         audio_recorder.startRecording();
         // Starting recording read thread
@@ -569,6 +673,21 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void stopCapture(){
+
+        // Stopping recording read thread
+        mt_audio_capture_flag = false;
+
+        // Check if file import was used
+        if (cap_file_import_flag){
+            // Stopping file reading interface
+            // Reset flags and clear files
+            cap_file_import_flag = false;
+            cap_imported_file = null;
+            cap_imported_file_stream = null;
+
+            return;
+        }
+
         // Check if audio interface is in appropriate state
         int audio_recorder_state = audio_recorder.getRecordingState();
         if (audio_recorder_state != AudioRecord.RECORDSTATE_RECORDING){
@@ -585,8 +704,7 @@ public class ScrollingActivity extends AppCompatActivity {
                     "running\n\tcurrent:" + temp_state);
             return;
         }
-        // Stopping recording read thread
-        mt_audio_capture_flag = false;
+
         // Stopping recording interface
         audio_recorder.stop();
         audio_recorder.release();
@@ -608,6 +726,22 @@ public class ScrollingActivity extends AppCompatActivity {
         // Incrementing the buffer queue location
         cap_queue_loc++;
         Log.d("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
+                "\n\tQueue location:%d", num_read, cap_queue_loc));
+    }
+
+    private void readFileCaptureBuffer(){
+        // Read data from the file input stream
+        int num_read = 0;
+        byte[] temp = new byte[cap_buffer_size];
+        try {
+            num_read = cap_imported_file_stream.read(temp, cap_buffer_size*cap_queue_loc,
+                    cap_buffer_size);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        cap_buffer.add(temp);
+        cap_queue_loc++;
+        Log.d("FileCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
                 "\n\tQueue location:%d", num_read, cap_queue_loc));
     }
 
@@ -743,8 +877,9 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private DenseMatrixComplex fft(DenseMatrix data) {
         int size = data.getValues().length;
-        if (size == 1) {
-            return new DenseMatrixComplex(data, DenseMatrix.ones(data.rows, 1));
+        if (size == 2) {
+            DenseMatrix temp = toDenseMatrix(new double []{data.getValues()[0] + data.getValues()[1], data.getValues()[0] - data.getValues()[1]});
+            return new DenseMatrixComplex(temp, DenseMatrix.zeros(temp.rows, 1));
         } else {
             DenseMatrixComplex data_even = fft(getEvenValues(data));
             DenseMatrixComplex data_odd = fft(getOddValues(data));
@@ -755,7 +890,7 @@ public class ScrollingActivity extends AppCompatActivity {
             for (int i = 0; i < size; i++){
                 double theta = 2 * Math.PI * i / size;
                 factor_real.set(i, Math.cos(theta));
-                factor_imag.set(i, -1*Math.sin(theta));
+                factor_imag.set(i, Math.sin(theta));
             }
             DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
 
@@ -970,16 +1105,25 @@ public class ScrollingActivity extends AppCompatActivity {
     // Convert from byte array to short[]
     private short[] bytesToShort(byte[] array) {
         short [] ret = new short[(int)(array.length/2)];
-        for (int i = 0; i < array.length; i++) {
-            int index = (int) Math.floor(i/2.0);
-            ret[index] = (short) ((ret[index] << 8) + (array[i] & 0xFF));
-        }
-        return ret;
-
-//        for (int i = 0; 2*i+1 < array.length; i++){
-//            ret[i] = (short) (((array[2*i+1] & 0xff) << 8) | (array[2*i] & 0xff));
+//        for (int i = 0; i < array.length; i++) {
+//            int index = (int) Math.floor(i/2.0);
+//            ret[index] = (short) ((ret[index] << 8) + (array[i] & 0xFF));
 //        }
 //        return ret;
+
+        for (int i = 0; 2*i+1 < array.length; i++){
+            ret[i] = Byte.valueOf(array[2*i]).shortValue();
+//            ret[i] = (short) (((array[2*i+1] & 0xff) << 8) | (array[2*i] & 0xff));
+        }
+        return ret;
+    }
+
+    private int[] bytesToInt(byte[] array) {
+        int[] ret = new int[(int) (array.length/2)];
+        for (int i = 0; 2*i+1 < array.length; i++){
+            ret[i] =  ((array[2*i+1] & 0xff) << 8) | (array[2*i] & 0xff);
+        }
+        return ret;
     }
 
     // Concatenate two DenseMatrixComplex matrices
@@ -1158,7 +1302,10 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        return new DenseMatrixComplex(ret_real, ret_imag);
 
-        DenseMatrixComplex ret = new DenseMatrixComplex((real1.mul(real2).sub(imag1.mul(imag2))), (real1.mul(real2).add(imag1.mul(imag2))));
+        DenseMatrixComplex ret = new DenseMatrixComplex(
+                (real1.mul(real2).sub(imag1.mul(imag2))),
+                (real1.mul(real2).add(imag1.mul(imag2)))
+        );
         return ret;
     }
     // Perform element-wise division

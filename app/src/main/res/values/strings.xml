@@ -107,6 +107,9 @@
     <string name="model_num_components">\tNumber of internal components:</string>
     <string name="model_num_iterations">\tNumber of iterations:</string>
     <!-- Capture Settings -->
+    <string name="cap_import_file">\tImport file:</string>
+    <string name="cap_import_file_select">\t Select a file</string>
+
     <string name="cap_sample_rate">\tCapture sample rate:</string>
     <string name="cap_time_interval">\tCapture sample time interval:</string>
     <string name="cap_num_channels">\tNumber of channels:</string>

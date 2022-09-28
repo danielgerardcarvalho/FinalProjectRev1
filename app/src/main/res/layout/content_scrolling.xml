@@ -230,6 +230,39 @@
 
         <LinearLayout
             android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+<!--            <Switch-->
+<!--                android:id="@+id/input_cap_file_import"-->
+<!--                android:layout_width="170dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="@string/cap_import_file"-->
+<!--                android:textStyle="italic"/>-->
+            <TextView
+                android:id="@+id/view_file_import"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cap_import_file"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1"
+                android:layout_weight="1"
+            />
+            <Button
+                android:id="@+id/input_cap_file_import_select"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:dependency="@+id/input_cap_file_import"
+                android:text="@string/cap_import_file_select"
+                android:textAlignment="center" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical">
 
@@ -444,6 +477,7 @@
         <Space
             android:layout_width="match_parent"
             android:layout_height="26dp" />
+
         <!--        <TextView-->
 <!--            android:layout_width="wrap_content"-->
 <!--            android:layout_height="wrap_content"-->
