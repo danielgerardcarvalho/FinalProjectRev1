@@ -28,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
+import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.text.Editable;
@@ -58,6 +59,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 import jeigen.DenseMatrix;
@@ -78,7 +81,9 @@ public class ScrollingActivity extends AppCompatActivity {
             MediaRecorder.AudioSource.UNPROCESSED
     };
     private static final int AUDIO_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
+    private static final int AUDIO_FORMAT_INT8 = AudioFormat.ENCODING_PCM_8BIT;
     private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
+    private static final int AUDIO_FORMAT_INT32 = AudioFormat.ENCODING_PCM_32BIT;
     private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     private static final int AUDIO_MIN_FORMAT_SIZE = 1;
     // input format options
@@ -171,9 +176,12 @@ public class ScrollingActivity extends AppCompatActivity {
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK){
-                    String file_loc = result.getData().getData().getPath();
-                    Log.v("UserFileSelect", file_loc);
-
+//                    String file_loc = result.getData().getData().getPath().split(":")[1];
+//                    file_loc = file_loc.split(":")[1];
+                    cap_imported_file = new File(
+                            Environment.getExternalStorageDirectory().toString() +
+                                    "/" + result.getData().getData().getPath().split(":")[1]
+                    );
                 }
             });
 
@@ -272,8 +280,8 @@ public class ScrollingActivity extends AppCompatActivity {
 
                 // Display results
 //                tempTestPlot(image);
-//                tempProcPlot(image);
-                tempCapPlot(image);
+                tempProcPlot(image);
+//                tempCapPlot(image);
 
                 system_flag = true;
             }
@@ -313,7 +321,11 @@ public class ScrollingActivity extends AppCompatActivity {
             return;
         }
         if (data.getClipData() == null) {
-            cap_imported_file = new File (data.getData().getPath());
+            cap_imported_file = new File(
+                    Environment.getExternalStorageDirectory().toString() +
+                            "/" + data.getData().getPath().split(":")[1]
+                    );
+//            cap_imported_file = new File (data.getData().getPath());
         } else {
             cap_imported_file = new File(data.getClipData().getItemAt(0).getUri().getPath());
         }
@@ -734,10 +746,21 @@ public class ScrollingActivity extends AppCompatActivity {
         int num_read = 0;
         byte[] temp = new byte[cap_buffer_size];
         try {
-            num_read = cap_imported_file_stream.read(temp, cap_buffer_size*cap_queue_loc,
+            num_read = cap_imported_file_stream.read(temp, 0,
                     cap_buffer_size);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+        if (num_read == -1){
+            Log.v("FileCapture", "Read entire file, ending read loop.");
+            mt_audio_capture_flag = false;
+        }
+        while (cap_queue_loc == 50){
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         cap_buffer.add(temp);
         cap_queue_loc++;
@@ -805,8 +828,10 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             // Fetch data from the capture buffer queue
             byte[] temp = cap_buffer.remove(0);
+            cap_queue_loc--;
             // Converting from bytes to short
             proc_data = bytesToShort(temp);
+//            int [] temp_proc_data = bytesToInt(temp);
             // Perform STFT
             // TODO: (MEL) removed in mean-time
             proc_melspectrogram.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
@@ -835,6 +860,7 @@ public class ScrollingActivity extends AppCompatActivity {
         DenseMatrix window;
         DenseMatrixComplex spec_window;
         DenseMatrix real_spec_window = new DenseMatrix(num_windows, proc_fft_size/2);
+        FFT fft_class = new FFT(proc_fft_size);
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
 
@@ -843,12 +869,15 @@ public class ScrollingActivity extends AppCompatActivity {
             window = getValuesInRange(data, i*hop_size, i * hop_size + window_size).mul(
                     window_coeff);
             // Calculating the FFT of the window
-            spec_window = fft(window);
-            // Use only half of the FFT output
+            fft_class.fft(window.getValues(), DenseMatrix.ones(proc_fft_size, 1).getValues());
+            spec_window = new DenseMatrixComplex(toDenseMatrix(fft_class.sol_x), toDenseMatrix(fft_class.sol_y));
+//            spec_window = fft(window);
+             // Use only half of the FFT output
             spec_window = getValuesInRange(spec_window, 0, proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
             DenseMatrix temp_real_spec_window = divComplexMatrix(spec_window,
                     proc_fft_size/2.0).abs();
+//            DenseMatrix temp_real_spec_window = spec_window.abs();
             // Adding the window to the spectrogram
             for (int j = 0; j < real_spec_window.cols; j++){
                 real_spec_window.set(i, j, temp_real_spec_window.getValues()[j]);
@@ -1105,25 +1134,52 @@ public class ScrollingActivity extends AppCompatActivity {
     // Convert from byte array to short[]
     private short[] bytesToShort(byte[] array) {
         short [] ret = new short[(int)(array.length/2)];
-//        for (int i = 0; i < array.length; i++) {
-//            int index = (int) Math.floor(i/2.0);
-//            ret[index] = (short) ((ret[index] << 8) + (array[i] & 0xFF));
+
+        ByteBuffer buffer = ByteBuffer.wrap(array);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        int count = 0;
+        while(buffer.hasRemaining()){
+            ret[count++] = buffer.getShort();
+        }
+        return ret;
+
+//        // BIG Endian
+//        for (int i = 0; 2*i+1 < array.length; i++){
+//            ret[i] = (short) ((array[2*i+1] & 0xff) | ((array[2*i+0] & 0xff) << 8));
 //        }
 //        return ret;
 
-        for (int i = 0; 2*i+1 < array.length; i++){
-            ret[i] = Byte.valueOf(array[2*i]).shortValue();
-//            ret[i] = (short) (((array[2*i+1] & 0xff) << 8) | (array[2*i] & 0xff));
-        }
-        return ret;
+//        // Little Endian
+//        for (int i = 0; 2*i+1 < array.length; i++){
+//            ret[i] = (short) ((array[2*i+0] & 0xff) | ((array[2*i+1] & 0xff) << 8));
+//        }
+//        return ret;
     }
 
     private int[] bytesToInt(byte[] array) {
-        int[] ret = new int[(int) (array.length/2)];
-        for (int i = 0; 2*i+1 < array.length; i++){
-            ret[i] =  ((array[2*i+1] & 0xff) << 8) | (array[2*i] & 0xff);
+        int[] ret = new int[(int) (array.length/4)];
+
+        ByteBuffer buffer = ByteBuffer.wrap(array);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        int count = 0;
+        while(buffer.hasRemaining()){
+            ret[count++] = buffer.getInt();
         }
         return ret;
+
+//        // Big Endian
+//        for (int i = 0; 4 * i + 3 < array.length; i++) {
+//            ret[i] = ((array[4 * i] & 0xff) << 24) | ((array[4 * i + 1] & 0xff) << 16) |
+//                    ((array[4 * i + 2] & 0xff) << 8) | (array[4 * i + 3] & 0xff);
+//        }
+//        return ret;
+
+//        // Little Endian
+//        for (int i = 0; 4 * i + 3 < array.length; i++) {
+//            ret[i] = ((array[4 * i + 3] & 0xff) << 24) | ((array[4 * i + 2] & 0xff) << 16) |
+//                    ((array[4 * i + 1] & 0xff) << 8) | (array[4 * i] & 0xff);
+//        }
+//        return ret;
     }
 
     // Concatenate two DenseMatrixComplex matrices
