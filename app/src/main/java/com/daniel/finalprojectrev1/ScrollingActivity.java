@@ -65,7 +65,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     private static final int AUDIO_MIN_FORMAT_SIZE = 1;
-    private final int CAP_QUEUE_SIZE = 50;
+    private final int CAP_QUEUE_SIZE = 2;
     // input format options
     private static final String UI_AUDIO_FORMAT_INT16 = "int16";
     private static final String UI_AUDIO_FORMAT_FLOAT = "float";
@@ -81,32 +81,32 @@ public class ScrollingActivity extends AppCompatActivity {
     /* Audio Pre-Processing */
     // processing constants
     private final int HANN = 0;
-    private final int PROC_QUEUE_SIZE = 50;
+    private final int PROC_QUEUE_SIZE = 2;
     // processing multi-threading
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
     private short [] proc_data;
     private ArrayList<DenseMatrix> proc_buffer;
 
-    /* Detection */
-    // detection constants
-    private final int DETECT_QUEUE_SIZE = 50;
-    // detection multi-thread
-    private Runnable mt_detection_runnable;
-    private boolean mt_detection_flag;
-    private DenseMatrix detect_data;
-    private ArrayList<DenseMatrix> detect_buffer;
+    /* Classifier */
+    // classifier constants
+    private final int DETECT_QUEUE_SIZE = 2;
+    // classifier multi-thread
+    private Runnable mt_classifier_runnable;
+    private boolean mt_classifier_flag;
+    private DenseMatrix classifier_data;
+    private ArrayList<DenseMatrix> classifier_buffer;
 
 
     /* UI Associated Model Import Settings */
-    // Inputs
-    private TextView model_filename_view;
-    private EditText num_class_events_text;
-    private EditText clip_len_text;
-    private EditText num_overlaps_text;
-    private EditText snr_range_min_text;
-    private EditText snr_range_max_text;
-    private EditText num_training_sample_text;
+    // Inputs - TODO: removing to reduce memory use
+//    private TextView model_filename_view;
+//    private EditText num_class_events_text;
+//    private EditText clip_len_text;
+//    private EditText num_overlaps_text;
+//    private EditText snr_range_min_text;
+//    private EditText snr_range_max_text;
+//    private EditText num_training_sample_text;
     // Values
     private int model_num_class_events;
     private int model_clip_len;
@@ -116,11 +116,11 @@ public class ScrollingActivity extends AppCompatActivity {
     private int model_num_training_samples;
 
     /* UI Associated Capture Settings */
-    // Inputs
-    private EditText cap_sample_rate_input;
-    private EditText cap_time_interval_input;
-    private Button cap_file_import_select_input;
-    private Spinner cap_format_input;
+    // Inputs - // TODO: removing to reduce memory use
+//    private EditText cap_sample_rate_input;
+//    private EditText cap_time_interval_input;
+//    private Button cap_file_import_select_input;
+//    private Spinner cap_format_input;
     // Values
     private int cap_sample_rate;
     private int cap_time_interval;
@@ -131,13 +131,13 @@ public class ScrollingActivity extends AppCompatActivity {
     private int cap_format;
 
     /* UI Associated Processing Settings */
-    // Inputs
-    private EditText proc_fft_size_input;
-    private EditText proc_sample_rate_input;
-    private EditText proc_num_time_frames_input;
-    private EditText proc_resolution_input;
-    private EditText proc_window_time_input;
-    private EditText proc_hop_time_input;
+    // Inputs - // TODO: removing to reduce memory use
+//    private EditText proc_fft_size_input;
+//    private EditText proc_sample_rate_input;
+//    private EditText proc_num_time_frames_input;
+//    private EditText proc_resolution_input;
+//    private EditText proc_window_time_input;
+//    private EditText proc_hop_time_input;
     // Values
     private int proc_fft_size;
     private int proc_sample_rate;
@@ -146,19 +146,19 @@ public class ScrollingActivity extends AppCompatActivity {
     private double proc_window_time;
     private double proc_hop_time;
 
-    /* UI Associated Detection Settings */
-    // Inputs
-    private EditText detect_fft_size_input;
-    private EditText detect_num_classes_input;
-    private EditText detect_num_inter_comp_input;
-    private EditText detect_num_iters_input;
-    private EditText detect_num_train_size_input;
+    /* UI Associated Classifier Settings */
+    // Inputs - // TODO: removing to reduce memory use
+//    private EditText classifier_fft_size_input;
+//    private EditText classifier_num_classes_input;
+//    private EditText classifier_num_inter_comp_input;
+//    private EditText classifier_num_iters_input;
+//    private EditText classifier_num_train_size_input;
     // Values
-    private int detect_fft_size;
-    private int detect_num_classes;
-    private int detect_num_inter_comp;
-    private int detect_num_iters;
-    private int detect_num_train_size;
+    private int classifier_fft_size;
+    private int classifier_num_classes;
+    private int classifier_num_inter_comp;
+    private int classifier_num_iters;
+    private int classifier_num_train_size;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -171,6 +171,8 @@ public class ScrollingActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         CollapsingToolbarLayout toolBarLayout = binding.toolbarLayout;
         toolBarLayout.setTitle(getTitle());
+
+
 
         /* Configure User Selection Register */
         ActivityResultLauncher<Intent> activity_launcher = registerForActivityResult(
@@ -190,38 +192,42 @@ public class ScrollingActivity extends AppCompatActivity {
         /* Configure Runnables */
         configureRunnables();
 
+        // TODO: declaring the variables locally to reduce memory use
         /* Model Import Setting Inputs */
-        model_filename_view = (TextView) findViewById(R.id.import_model_filename_view);
-        num_class_events_text = (EditText) findViewById(R.id.input_model_import_num_event_classes);
-        clip_len_text = (EditText) findViewById(R.id.input_model_import_clip_len);
-        num_overlaps_text = (EditText) findViewById(R.id.input_model_import_num_overlaps);
-        snr_range_min_text = (EditText) findViewById(R.id.input_model_import_snr_range_min);
-        snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
-        num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
+        TextView model_filename_view = (TextView) findViewById(R.id.import_model_filename_view);
+        EditText num_class_events_text = (EditText) findViewById(R.id.input_model_import_num_event_classes);
+        EditText clip_len_text = (EditText) findViewById(R.id.input_model_import_clip_len);
+        EditText num_overlaps_text = (EditText) findViewById(R.id.input_model_import_num_overlaps);
+        EditText snr_range_min_text = (EditText) findViewById(R.id.input_model_import_snr_range_min);
+        EditText snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
+        EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
         // TODO: temporary image view, used to test the plot output and test the capture and
         //  processing functions.
         ImageView image = findViewById(R.id.imageView);
 
+        // TODO: declaring the variables locally to reduce memory use
         /* Capture Setting Inputs */
-        cap_sample_rate_input = (EditText) findViewById(R.id.input_cap_sample_rate);
-        cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
-        cap_file_import_select_input = (Button) findViewById(R.id.input_cap_file_import_select);
-        cap_format_input = (Spinner) findViewById(R.id.input_cap_format_option);
+        EditText cap_sample_rate_input = (EditText) findViewById(R.id.input_cap_sample_rate);
+        EditText cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
+        Button cap_file_import_select_input = (Button) findViewById(R.id.input_cap_file_import_select);
+        Spinner cap_format_input = (Spinner) findViewById(R.id.input_cap_format_option);
 
+        // TODO: declaring the variables locally to reduce memory use
         /* Processing Setting Inputs */
-        proc_fft_size_input = (EditText) findViewById(R.id.input_proc_fft_size);
-        proc_sample_rate_input = (EditText) findViewById(R.id.input_proc_sample_rate);
-        proc_num_time_frames_input = (EditText) findViewById(R.id.input_proc_num_time_frames);
-        proc_resolution_input = (EditText) findViewById(R.id.input_proc_resolution);
-        proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
-        proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
+        EditText proc_fft_size_input = (EditText) findViewById(R.id.input_proc_fft_size);
+        EditText proc_sample_rate_input = (EditText) findViewById(R.id.input_proc_sample_rate);
+        EditText proc_num_time_frames_input = (EditText) findViewById(R.id.input_proc_num_time_frames);
+        EditText proc_resolution_input = (EditText) findViewById(R.id.input_proc_resolution);
+        EditText proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
+        EditText proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
 
-        /* Detection Setting Inputs */
-        detect_fft_size_input = (EditText) findViewById(R.id.input_detect_fft_size);
-        detect_num_classes_input = (EditText) findViewById(R.id.input_detect_num_classes);
-        detect_num_inter_comp_input = (EditText) findViewById(R.id.input_detect_num_inter_comp);
-        detect_num_iters_input = (EditText) findViewById(R.id.input_detect_num_iters);
-        detect_num_train_size_input = (EditText) findViewById(R.id.input_detect_num_train_size);
+        // TODO: declaring the variables locally to reduce memory use
+        /* Classifier Setting Inputs */
+        EditText classifier_fft_size_input = (EditText) findViewById(R.id.input_classifier_fft_size);
+        EditText classifier_num_classes_input = (EditText) findViewById(R.id.input_classifier_num_classes);
+        EditText classifier_num_inter_comp_input = (EditText) findViewById(R.id.input_classifier_num_inter_comp);
+        EditText classifier_num_iters_input = (EditText) findViewById(R.id.input_classifier_num_iters);
+        EditText classifier_num_train_size_input = (EditText) findViewById(R.id.input_classifier_num_train_size);
 
         /* File import button logic*/
         cap_file_import_select_input.setOnClickListener(button -> {
@@ -239,7 +245,15 @@ public class ScrollingActivity extends AppCompatActivity {
         fab.setOnClickListener(view -> {
 
             // Importing input user settings and checking if these settings are valid
-            if (!convertSettingInputs()) {
+            boolean valid_flag = convertSettingInputs( num_class_events_text, clip_len_text,
+                    num_overlaps_text, snr_range_min_text, snr_range_max_text,
+                    num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
+                    cap_format_input, proc_fft_size_input, proc_sample_rate_input,
+                    classifier_fft_size_input, classifier_num_classes_input,
+                    classifier_num_inter_comp_input, classifier_num_iters_input,
+                    classifier_num_train_size_input
+            );
+            if (!valid_flag) {
                 Snackbar.make(view, "Settings are not valid", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
                 return;
@@ -252,9 +266,9 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Change icon image
                 fab.setImageResource(android.R.drawable.ic_media_play);
 
-                // Stop detection thread
-                if (mt_detection_flag) {
-                    stopDetection();
+                // Stop classifier thread
+                if (mt_classifier_flag) {
+                    stopClassifier();
                 }
                 // Stop processing thread
                 if (mt_audio_processing_flag) {
@@ -275,18 +289,25 @@ public class ScrollingActivity extends AppCompatActivity {
                 configureCapture();
                 // Configure processing system
                 configureProcessing();
-                // Configure detection system
-                configureDetection();
+                // Configure classifier system
+                configureClassifier();
 //                // Configure monitoring system
 //                configureMonitor();
 
                 // Update UI fields
-                uiFieldUpdate();
+                uiFieldUpdate(model_filename_view, num_class_events_text, clip_len_text,
+                        num_overlaps_text, snr_range_min_text, snr_range_max_text,
+                        num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
+                        cap_format_input, proc_fft_size_input, proc_sample_rate_input,
+                        proc_num_time_frames_input, proc_resolution_input, proc_window_time_input,
+                        proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
+                        classifier_num_inter_comp_input, classifier_num_iters_input,
+                        classifier_num_train_size_input);
 
                 // Starting the sub-systems
                 startCapture();
                 startProcessing();
-                startDetection();
+//                startClassifier();
 
                 // Display results
 //                tempTestPlot(image);
@@ -301,7 +322,10 @@ public class ScrollingActivity extends AppCompatActivity {
         checkAllPermissions();
 
         /* Model Import Filename Update Logic */
-        modelFilenameUpdate();
+        modelFilenameUpdate(model_filename_view, num_class_events_text, clip_len_text,
+                num_overlaps_text, snr_range_min_text, snr_range_max_text,
+                num_training_sample_text
+        );
     }
 
     @Override
@@ -344,7 +368,19 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
-    private boolean convertSettingInputs() {
+    private boolean convertSettingInputs(EditText num_class_events_text, EditText clip_len_text,
+                                         EditText num_overlaps_text, EditText snr_range_min_text,
+                                         EditText snr_range_max_text,
+                                         EditText num_training_sample_text,
+                                         EditText cap_sample_rate_input,
+                                         EditText cap_time_interval_input,
+                                         Spinner cap_format_input, EditText proc_fft_size_input,
+                                         EditText proc_sample_rate_input,
+                                         EditText classifier_fft_size_input,
+                                         EditText classifier_num_classes_input,
+                                         EditText classifier_num_inter_comp_input,
+                                         EditText classifier_num_iters_input,
+                                         EditText classifier_num_train_size_input) {
         // Loading defaults - model import settings
         model_num_class_events = Integer.parseInt(num_class_events_text.getHint().toString());
         model_clip_len = Integer.parseInt(clip_len_text.getHint().toString());
@@ -352,18 +388,6 @@ public class ScrollingActivity extends AppCompatActivity {
         model_snr_range_min = Integer.parseInt(snr_range_min_text.getHint().toString());
         model_snr_range_max = Integer.parseInt(snr_range_max_text.getHint().toString());
         model_num_training_samples = Integer.parseInt(num_training_sample_text.getHint().toString());
-        // Loading defaults - capture settings
-//        cap_sample_rate = Integer.parseInt(cap_sample_rate_input.getHint().toString());
-//        cap_time_interval = model_clip_len;
-//        cap_format = AUDIO_FORMAT_INT16;
-//        String selected_audio_format = cap_format_input.getSelectedItem().toString();
-        // Loading defaults - processing settings
-//        proc_fft_size = Integer.parseInt(proc_fft_size_input.getHint().toString());
-//        proc_sample_rate = cap_sample_rate;
-//        proc_num_time_frames = model_clip_len * proc_sample_rate;
-//        proc_resolution = proc_sample_rate / proc_fft_size;
-//        proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
-//        proc_hop_time = proc_window_time / 2.0;
 
         // Processing User Inputs
         // Model import settings
@@ -414,36 +438,36 @@ public class ScrollingActivity extends AppCompatActivity {
         // - processing hop time
         proc_hop_time = proc_window_time / 2.0;
 
-        // Detection Settings
-        // - detection fft size
-        if (!TextUtils.isEmpty(detect_fft_size_input.getText())) {
-            detect_fft_size = Integer.parseInt(detect_fft_size_input.getText().toString());
+        // Classifier Settings
+        // - classifier fft size
+        if (!TextUtils.isEmpty(classifier_fft_size_input.getText())) {
+            classifier_fft_size = Integer.parseInt(classifier_fft_size_input.getText().toString());
         } else {
-            detect_fft_size = proc_fft_size;
+            classifier_fft_size = proc_fft_size / 2;
         }
-        // - detection number of  classes
-        if (!TextUtils.isEmpty(detect_num_classes_input.getText())) {
-            detect_num_classes = Integer.parseInt(detect_num_classes_input.getText().toString());
+        // - classifier number of  classes
+        if (!TextUtils.isEmpty(classifier_num_classes_input.getText())) {
+            classifier_num_classes = Integer.parseInt(classifier_num_classes_input.getText().toString());
         } else {
-            detect_num_classes = model_num_class_events;
+            classifier_num_classes = model_num_class_events;
         }
-        // - detection number of internal components
-        if (!TextUtils.isEmpty(detect_num_inter_comp_input.getText())) {
-            detect_num_inter_comp = Integer.parseInt(detect_num_inter_comp_input.getText().toString());
+        // - classifier number of internal components
+        if (!TextUtils.isEmpty(classifier_num_inter_comp_input.getText())) {
+            classifier_num_inter_comp = Integer.parseInt(classifier_num_inter_comp_input.getText().toString());
         } else {
-            detect_num_inter_comp = Integer.parseInt(detect_num_inter_comp_input.getHint().toString());
+            classifier_num_inter_comp = Integer.parseInt(classifier_num_inter_comp_input.getHint().toString());
         }
-        // - detection number of internal iterations
-        if (!TextUtils.isEmpty(detect_num_iters_input.getText())) {
-            detect_num_iters = Integer.parseInt(detect_num_iters_input.getText().toString());
+        // - classifier number of internal iterations
+        if (!TextUtils.isEmpty(classifier_num_iters_input.getText())) {
+            classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getText().toString());
         } else {
-            detect_num_iters = Integer.parseInt(detect_num_iters_input.getHint().toString());
+            classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getHint().toString());
         }
-        // - detection training size
-        if (!TextUtils.isEmpty(detect_num_train_size_input.getText())) {
-            detect_num_train_size = Integer.parseInt(detect_num_train_size_input.getText().toString());
+        // - classifier training size
+        if (!TextUtils.isEmpty(classifier_num_train_size_input.getText())) {
+            classifier_num_train_size = Integer.parseInt(classifier_num_train_size_input.getText().toString());
         } else {
-            detect_num_train_size = Integer.parseInt(detect_num_train_size_input.getHint().toString());
+            classifier_num_train_size = Integer.parseInt(classifier_num_train_size_input.getHint().toString());
         }
 
         // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
@@ -452,7 +476,10 @@ public class ScrollingActivity extends AppCompatActivity {
         return true;
     }
 
-    private void modelFilenameUpdate() {
+    private void modelFilenameUpdate(TextView model_filename_view, EditText num_class_events_text,
+                                     EditText clip_len_text, EditText num_overlaps_text,
+                                     EditText snr_range_min_text, EditText snr_range_max_text,
+                                     EditText num_training_sample_text) {
 
         num_class_events_text.addTextChangedListener(new TextWatcher() {
             @Override
@@ -571,7 +598,19 @@ public class ScrollingActivity extends AppCompatActivity {
 
     }
 
-    private void uiFieldUpdate(){
+    private void uiFieldUpdate(TextView model_filename_view, EditText num_class_events_text,
+                               EditText clip_len_text, EditText num_overlaps_text,
+                               EditText snr_range_min_text, EditText snr_range_max_text,
+                               EditText num_training_sample_text, EditText cap_sample_rate_input,
+                               EditText cap_time_interval_input, Spinner cap_format_input,
+                               EditText proc_fft_size_input, EditText proc_sample_rate_input,
+                               EditText proc_num_time_frames_input, EditText proc_resolution_input,
+                               EditText proc_window_time_input, EditText proc_hop_time_input,
+                               EditText classifier_fft_size_input,
+                               EditText classifier_num_classes_input,
+                               EditText classifier_num_inter_comp_input,
+                               EditText classifier_num_iters_input,
+                               EditText classifier_num_train_size_input){
         // Update the text field of all input spaces
         // Model import
         num_class_events_text.setText(String.format("%d", model_num_class_events));
@@ -603,12 +642,12 @@ public class ScrollingActivity extends AppCompatActivity {
         proc_resolution_input.setText(String.format("%d", proc_resolution));
         proc_window_time_input.setText(String.format("%f", proc_window_time));
         proc_hop_time_input.setText(String.format("%f", proc_hop_time));
-        // Detection
-        detect_fft_size_input.setText(String.format("%d", detect_fft_size));
-        detect_num_classes_input.setText(String.format("%d", detect_num_classes));
-        detect_num_inter_comp_input.setText(String.format("%d", detect_num_inter_comp));
-        detect_num_iters_input.setText(String.format("%d", detect_num_iters));
-        detect_num_train_size_input.setText(String.format("%d", detect_num_train_size));
+        // Classifier
+        classifier_fft_size_input.setText(String.format("%d", classifier_fft_size));
+        classifier_num_classes_input.setText(String.format("%d", classifier_num_classes));
+        classifier_num_inter_comp_input.setText(String.format("%d", classifier_num_inter_comp));
+        classifier_num_iters_input.setText(String.format("%d", classifier_num_iters));
+        classifier_num_train_size_input.setText(String.format("%d", classifier_num_train_size));
 
     }
 
@@ -641,11 +680,11 @@ public class ScrollingActivity extends AppCompatActivity {
             preProcessing();
             Log.v("AudioProcessing", "Audio pre-processing thread has been closed.");
         };
-        // Detection Runnable
-        mt_detection_runnable = () -> {
+        // Classifier Runnable
+        mt_classifier_runnable = () -> {
             // Read data from the processing buffer and delete
-            Log.v("Detection", "Detection thread is starting...");
-            Log.v("Detection", "Detection thread has been closed.");
+            Log.v("Classifier", "Classifier thread is starting...");
+            Log.v("Classifier", "Classifier thread has been closed.");
         };
     }
 
@@ -962,7 +1001,6 @@ public class ScrollingActivity extends AppCompatActivity {
             for (int j = 0; j < real_spec_window.cols; j++){
                 real_spec_window.set(i, j, temp_real_spec_window.getValues()[j]);
             }
-
             // TODO: (MEL) removed in mean-time
 //            // Converting spectrum to melscale
 //            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
@@ -976,7 +1014,18 @@ public class ScrollingActivity extends AppCompatActivity {
         // Transposing the spectrogram to correct orientation
         real_spec_window = real_spec_window.t().pow(2);
         // Normalising the spectrogram as well as converting the dB
-        double reference = real_spec_window.minOverRows().minOverCols().getValues()[0];
+        double reference = real_spec_window.
+                minOverRows().minOverCols().getValues()[0];
+
+        Log.v("input values", String.format(
+                "\n\tFFT size (rows):%d" +
+                "\n\tNum frames (cols):%d", proc_fft_size, proc_num_time_frames));
+        Log.v("output values", String.format(
+                "\n\tFFT size (rows):%d" +
+                "\n\tNum frames (cols):%d", real_spec_window.rows, real_spec_window.cols));
+        Log.v("parameters", String.format(
+                "\n\tFFT size/2: %d" +
+                "\n\tCalculated num windows: %d", proc_fft_size/2, num_windows));
         return ampToDB(real_spec_window, reference);
     }
 
@@ -1058,21 +1107,25 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
-    // Detection
-    private void configureDetection() {
-        // TODO: implement the configuration of the Detection stage
+    // Classifier
+    private void configureClassifier() {
+        // TODO: implement the configuration of the Classifier stage
         // Input variable initialisation
-        detect_data = null;
+        classifier_data = null;
         // Buffer clearing / initialisation
-        detect_buffer = new ArrayList<>();
+        classifier_buffer = new ArrayList<>();
+        // Calculating number of time frames
+        int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
+                          (int) Math.ceil(proc_window_time * proc_sample_rate)) /
+                          (int) Math.ceil(proc_hop_time * proc_sample_rate))+1;
         // Configuring NMF class
-        NMF nmf = new NMF(detect_fft_size,
-                detect_num_classes,
-                detect_num_inter_comp,
-                detect_num_iters
+        NMF nmf = new NMF(
+                classifier_fft_size,
+                num_windows,
+                classifier_num_classes,
+                classifier_num_inter_comp,
+                classifier_num_iters
         );
-        // Configure binarisation
-//        binarisation_method = ;
 
 
 
@@ -1090,11 +1143,13 @@ public class ScrollingActivity extends AppCompatActivity {
         // - setting the method of binarisation
         // possible refinement
     }
-    private void startDetection() {
-        // TODO: implement the startDetection method
+
+    private void startClassifier() {
+        // TODO: implement the startClassifier method
     }
-    private void stopDetection() {
-        // TODO: implement the stopDetection method
+
+    private void stopClassifier() {
+        // TODO: implement the stopClassifier method
     }
 
 

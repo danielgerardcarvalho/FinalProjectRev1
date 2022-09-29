@@ -469,14 +469,14 @@
             android:layout_width="match_parent"
             android:layout_height="26dp" />
 
-        <!-- DETECTION SETTINGS -->
+        <!-- CLASSIFIER SETTINGS -->
 
         <TextView
-            android:id="@+id/detect_setting_heading_view"
+            android:id="@+id/classifier_setting_heading_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/detect_settings_title"
+            android:text="@string/classifier_settings_title"
             android:textAlignment="viewStart"
             android:textAllCaps="true"
             android:textColor="@color/heading_2"
@@ -488,35 +488,35 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/view_detect_fft_size"
+                android:id="@+id/view_classifier_fft_size"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/detect_fft_size"
+                android:text="@string/classifier_fft_size"
                 android:textAlignment="textStart"
                 android:textColor="@color/heading_1" />
 
             <EditText
-                android:id="@+id/input_detect_fft_size"
+                android:id="@+id/input_classifier_fft_size"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:autoText="false"
                 android:ems="10"
-                android:hint="optional - (default) Processing FFT size"
+                android:hint="optional - (default) Processing FFT size / 2"
                 android:inputType="number"
                 android:singleLine="true"
                 android:textSize="14sp" />
 
             <TextView
-                android:id="@+id/view_detect_num_classes"
+                android:id="@+id/view_classifier_num_classes"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/detect_num_classes"
+                android:text="@string/classifier_num_classes"
                 android:textAlignment="textStart"
                 android:textColor="@color/heading_1" />
 
             <EditText
-                android:id="@+id/input_detect_num_classes"
+                android:id="@+id/input_classifier_num_classes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -528,14 +528,14 @@
                 android:textSize="14sp" />
 
             <TextView
-                android:id="@+id/view_detect_num_inter_comp"
+                android:id="@+id/view_classifier_num_inter_comp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/detect_num_inter_comp"
+                android:text="@string/classifier_num_inter_comp"
                 android:textColor="@color/heading_1" />
 
             <EditText
-                android:id="@+id/input_detect_num_inter_comp"
+                android:id="@+id/input_classifier_num_inter_comp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -548,14 +548,14 @@
                 android:textSize="14sp" />
 
             <TextView
-                android:id="@+id/view_detect_num_iters"
+                android:id="@+id/view_classifier_num_iters"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/detect_num_iters"
+                android:text="@string/classifier_num_iters"
                 android:textColor="@color/heading_1" />
 
             <EditText
-                android:id="@+id/input_detect_num_iters"
+                android:id="@+id/input_classifier_num_iters"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -568,14 +568,14 @@
                 android:textSize="14sp" />
 
             <TextView
-                android:id="@+id/view_detect_num_train_size"
+                android:id="@+id/view_classifier_num_train_size"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/detect_num_train_size"
+                android:text="@string/classifier_num_train_size"
                 android:textColor="@color/heading_1" />
 
             <EditText
-                android:id="@+id/input_detect_num_train_size"
+                android:id="@+id/input_classifier_num_train_size"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

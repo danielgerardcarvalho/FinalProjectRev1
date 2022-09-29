@@ -96,7 +96,7 @@
     <string name="model_import_settings_title">\tModel Import Settings</string>
     <string name="cap_settings_title">\tCapture Settings</string>
     <string name="proc_settings_title">\tProcessing Settings</string>
-    <string name="detect_settings_title">\tDetection Settings</string>
+    <string name="classifier_settings_title">\tClassifier Settings</string>
     <string name="classification_settings_title">\tClassification Settings</string>
     <string name="model_filename_title">\tModel Import Filename:</string>
 
@@ -123,11 +123,11 @@
     <string name="proc_window_time">\tProcessing window time:</string>
     <string name="proc_hop_time">\tProcessing hop time:</string>
     <!-- Classification Settings -->
-    <string name="detect_fft_size">\tDetection FFT size:</string>
-    <string name="detect_num_classes">\tNumber of detectable classes:</string>
-    <string name="detect_num_inter_comp">\tNumber of internal components:</string>
-    <string name="detect_num_iters">\tNumber of internal interactions:</string>
-    <string name="detect_num_train_size">\tNumber of training samples:</string>
+    <string name="classifier_fft_size">\tClassifier FFT size:</string>
+    <string name="classifier_num_classes">\tNumber of detectable classes:</string>
+    <string name="classifier_num_inter_comp">\tNumber of internal components:</string>
+    <string name="classifier_num_iters">\tNumber of internal interactions:</string>
+    <string name="classifier_num_train_size">\tNumber of training samples:</string>
 
 
     <!-- Preference Titles -->
