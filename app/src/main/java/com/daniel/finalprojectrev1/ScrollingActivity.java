@@ -65,6 +65,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     private static final int AUDIO_MIN_FORMAT_SIZE = 1;
+    private final int CAP_QUEUE_SIZE = 50;
     // input format options
     private static final String UI_AUDIO_FORMAT_INT16 = "int16";
     private static final String UI_AUDIO_FORMAT_FLOAT = "float";
@@ -74,20 +75,30 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_audio_capture_runnable;
     private Runnable mt_file_capture_runnable;
     private boolean mt_audio_capture_flag;
-//    private byte [][] cap_buffer;
-    // TODO: Double check that this Array list is a 2d array and not a 1D.
     private ArrayList<byte[]> cap_buffer;
+    private boolean cap_first_run;
 
     /* Audio Pre-Processing */
     // processing constants
     private final int HANN = 0;
+    private final int PROC_QUEUE_SIZE = 50;
     // processing multi-threading
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
     private short [] proc_data;
-    private ArrayList<DenseMatrix> proc_melspectrogram;
+    private ArrayList<DenseMatrix> proc_buffer;
 
-    /* Model Import Settings */
+    /* Detection */
+    // detection constants
+    private final int DETECT_QUEUE_SIZE = 50;
+    // detection multi-thread
+    private Runnable mt_detection_runnable;
+    private boolean mt_detection_flag;
+    private DenseMatrix detect_data;
+    private ArrayList<DenseMatrix> detect_buffer;
+
+
+    /* UI Associated Model Import Settings */
     // Inputs
     private TextView model_filename_view;
     private EditText num_class_events_text;
@@ -104,7 +115,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private int model_snr_range_max;
     private int model_num_training_samples;
 
-    /* Capture Settings */
+    /* UI Associated Capture Settings */
     // Inputs
     private EditText cap_sample_rate_input;
     private EditText cap_time_interval_input;
@@ -114,15 +125,12 @@ public class ScrollingActivity extends AppCompatActivity {
     private int cap_sample_rate;
     private int cap_time_interval;
     private int cap_buffer_size;
-    private int cap_queue_loc;
     private boolean cap_file_import_flag = false;
     private File cap_imported_file;
     private FileInputStream cap_imported_file_stream;
     private int cap_format;
-    // Constants
-    private final int CAP_QUEUE_SIZE = 50;
 
-    /* Processing Settings */
+    /* UI Associated Processing Settings */
     // Inputs
     private EditText proc_fft_size_input;
     private EditText proc_sample_rate_input;
@@ -138,7 +146,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private double proc_window_time;
     private double proc_hop_time;
 
-    /* Detection Settings */
+    /* UI Associated Detection Settings */
     // Inputs
     private EditText detect_fft_size_input;
     private EditText detect_num_classes_input;
@@ -245,12 +253,15 @@ public class ScrollingActivity extends AppCompatActivity {
                 fab.setImageResource(android.R.drawable.ic_media_play);
 
                 // Stop detection thread
+                if (mt_detection_flag) {
+                    stopDetection();
+                }
                 // Stop processing thread
-                if (mt_audio_processing_flag){
+                if (mt_audio_processing_flag) {
                     stopProcessing();
                 }
                 // Stop audio capture thread
-                if (mt_audio_capture_flag){
+                if (mt_audio_capture_flag) {
                     stopCapture();
                 }
                 system_flag = false;
@@ -264,10 +275,10 @@ public class ScrollingActivity extends AppCompatActivity {
                 configureCapture();
                 // Configure processing system
                 configureProcessing();
-                //            // Configure detection system
-                //            configureDetection();
-                //            // Configure monitoring system
-                //            configureMonitor();
+                // Configure detection system
+                configureDetection();
+//                // Configure monitoring system
+//                configureMonitor();
 
                 // Update UI fields
                 uiFieldUpdate();
@@ -275,7 +286,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Starting the sub-systems
                 startCapture();
                 startProcessing();
-                //            startDetection();
+                startDetection();
 
                 // Display results
 //                tempTestPlot(image);
@@ -402,6 +413,38 @@ public class ScrollingActivity extends AppCompatActivity {
         proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
         // - processing hop time
         proc_hop_time = proc_window_time / 2.0;
+
+        // Detection Settings
+        // - detection fft size
+        if (!TextUtils.isEmpty(detect_fft_size_input.getText())) {
+            detect_fft_size = Integer.parseInt(detect_fft_size_input.getText().toString());
+        } else {
+            detect_fft_size = proc_fft_size;
+        }
+        // - detection number of  classes
+        if (!TextUtils.isEmpty(detect_num_classes_input.getText())) {
+            detect_num_classes = Integer.parseInt(detect_num_classes_input.getText().toString());
+        } else {
+            detect_num_classes = model_num_class_events;
+        }
+        // - detection number of internal components
+        if (!TextUtils.isEmpty(detect_num_inter_comp_input.getText())) {
+            detect_num_inter_comp = Integer.parseInt(detect_num_inter_comp_input.getText().toString());
+        } else {
+            detect_num_inter_comp = Integer.parseInt(detect_num_inter_comp_input.getHint().toString());
+        }
+        // - detection number of internal iterations
+        if (!TextUtils.isEmpty(detect_num_iters_input.getText())) {
+            detect_num_iters = Integer.parseInt(detect_num_iters_input.getText().toString());
+        } else {
+            detect_num_iters = Integer.parseInt(detect_num_iters_input.getHint().toString());
+        }
+        // - detection training size
+        if (!TextUtils.isEmpty(detect_num_train_size_input.getText())) {
+            detect_num_train_size = Integer.parseInt(detect_num_train_size_input.getText().toString());
+        } else {
+            detect_num_train_size = Integer.parseInt(detect_num_train_size_input.getHint().toString());
+        }
 
         // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
         //  a system that states which settings are missing or in error. Therefore returning true
@@ -560,6 +603,13 @@ public class ScrollingActivity extends AppCompatActivity {
         proc_resolution_input.setText(String.format("%d", proc_resolution));
         proc_window_time_input.setText(String.format("%f", proc_window_time));
         proc_hop_time_input.setText(String.format("%f", proc_hop_time));
+        // Detection
+        detect_fft_size_input.setText(String.format("%d", detect_fft_size));
+        detect_num_classes_input.setText(String.format("%d", detect_num_classes));
+        detect_num_inter_comp_input.setText(String.format("%d", detect_num_inter_comp));
+        detect_num_iters_input.setText(String.format("%d", detect_num_iters));
+        detect_num_train_size_input.setText(String.format("%d", detect_num_train_size));
+
     }
 
     private void configureRunnables(){
@@ -589,7 +639,13 @@ public class ScrollingActivity extends AppCompatActivity {
             Log.v("AudioProcessing", "Audio pre-processing thread is starting...");
             // The infinite while loop is in preProcessing
             preProcessing();
-            Log.v("AudioProcessing", "Audio pre-processing thread has been closed");
+            Log.v("AudioProcessing", "Audio pre-processing thread has been closed.");
+        };
+        // Detection Runnable
+        mt_detection_runnable = () -> {
+            // Read data from the processing buffer and delete
+            Log.v("Detection", "Detection thread is starting...");
+            Log.v("Detection", "Detection thread has been closed.");
         };
     }
 
@@ -632,8 +688,8 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Capture
     private void configureCapture() {
-        // Resetting location of cap_queue
-        cap_queue_loc = 0;
+        // Reset first run flag
+        cap_first_run = true;
         // Minimum buffer size
         int min_buffer_size = AudioRecord.getMinBufferSize(cap_sample_rate, AUDIO_CHANNELS,
                 cap_format);
@@ -650,8 +706,7 @@ public class ScrollingActivity extends AppCompatActivity {
         checkPermission(this, this, Manifest.permission.RECORD_AUDIO);
         audio_recorder = new AudioRecord(AUDIO_SOURCES[1], cap_sample_rate, AUDIO_CHANNELS,
                 cap_format, cap_buffer_size);
-        // Buffer initialisation
-//        cap_buffer = new byte[CAP_QUEUE_SIZE][cap_buffer_size];
+        // Buffer clearing / initialisation
         cap_buffer = new ArrayList<>();
         if (cap_file_import_flag){
             // Convert the File to input stream
@@ -743,24 +798,26 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void readAudioCaptureBuffer(){
-        // Read data from the internal buffer
-        int num_read = 0;
+        // Clear the input buffer with one byte read
         byte [] temp = new byte[cap_buffer_size];
-        num_read = audio_recorder.read(temp, 0, cap_buffer_size);
-        if (cap_queue_loc == 0) {
-            cap_queue_loc++;
-            return;
+        if (cap_buffer.size() == 0 && cap_first_run){
+            // This read is only to clear garbage data and is only run of first iteration
+            audio_recorder.read(temp, 0, 1);
+            cap_first_run = false;
         }
+        // Override garbage read with real read of AudioRecord buffer
+        int num_read = 0;
+        num_read = audio_recorder.read(temp, 0, cap_buffer_size);
 
+        // Add read data to capture buffer
         cap_buffer.add(temp);
-//        num_read = audio_recorder.read(cap_buffer[cap_queue_loc], 0, cap_buffer_size);
-        // Incrementing the buffer queue location
-        cap_queue_loc++;
         Log.d("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
-                "\n\tQueue location:%d", num_read, cap_queue_loc));
+                "\n\tQueue location:%d", num_read, cap_buffer.size()));
     }
 
     private void readFileCaptureBuffer(){
+        // Clear first run flag
+        cap_first_run = false;
         // Read data from the file input stream
         int num_read = 0;
         byte[] temp = new byte[cap_buffer_size];
@@ -774,7 +831,7 @@ public class ScrollingActivity extends AppCompatActivity {
             Log.v("FileCapture", "Read entire file, ending read loop.");
             stopCapture();
         }
-        while (cap_queue_loc == CAP_QUEUE_SIZE){
+        while (cap_buffer.size() == CAP_QUEUE_SIZE){
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -785,9 +842,8 @@ public class ScrollingActivity extends AppCompatActivity {
             }
         }
         cap_buffer.add(temp);
-        cap_queue_loc++;
         Log.d("FileCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
-                "\n\tQueue location:%d", num_read, cap_queue_loc));
+                "\n\tQueue location:%d", num_read, cap_buffer.size()));
     }
 
 
@@ -803,9 +859,10 @@ public class ScrollingActivity extends AppCompatActivity {
         //  - outputting the spectrogram - THIS IS FOR TESTING, will maybe be in final but not sure
         //  - REMEMBER THIS METHOD IS FOR CONFIGURATION ONLY - maybe creation of secondary thread?.
 
-        // Initialise proc_melspectrogram
-        proc_melspectrogram = new ArrayList<>();
+        // Input variable initialisation
         proc_data = null;
+        // Output buffer clearing / initialisation
+        proc_buffer = new ArrayList<>();
     }
 
     private void startProcessing(){
@@ -822,7 +879,6 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void preProcessing(){
-
         // Finding window size
         int window_size = (int) Math.ceil(proc_window_time * proc_sample_rate);
         //  Finding hop size
@@ -857,13 +913,11 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             // Fetch data from the capture buffer queue
             byte[] temp = cap_buffer.remove(0);
-            cap_queue_loc--;
             // Converting from bytes to short
             proc_data = bytesToShort(temp);
-//            int [] temp_proc_data = bytesToInt(temp);
             // Perform STFT
             // TODO: (MEL) removed in mean-time
-            proc_melspectrogram.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
+            proc_buffer.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
                     window_coeff, fft/*, frequency_range, melscale_range*/));
         }
     }
@@ -926,6 +980,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return ampToDB(real_spec_window, reference);
     }
 
+    // TODO: currently this fft method in not used (Deprecated for use of FFT class)
     private DenseMatrixComplex fft(DenseMatrix data) {
         int size = data.getValues().length;
         if (size == 2) {
@@ -952,6 +1007,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
+    // TODO: currently this mel conversion method is not used (Deprecated as mel scale is not used)
     // Converts frequency spectrum to melscale
     private double[] specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
         int freq_count = 0;
@@ -997,13 +1053,49 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         double[] ret = new double[mel_scale_spectrum.size()];
         for (int i = 0; i < mel_scale_spectrum.size(); i++){
-           ret[i] = mel_scale_spectrum.get(i);
+            ret[i] = mel_scale_spectrum.get(i);
         }
         return ret;
     }
 
-
     // Detection
+    private void configureDetection() {
+        // TODO: implement the configuration of the Detection stage
+        // Input variable initialisation
+        detect_data = null;
+        // Buffer clearing / initialisation
+        detect_buffer = new ArrayList<>();
+        // Configuring NMF class
+        NMF nmf = new NMF(detect_fft_size,
+                detect_num_classes,
+                detect_num_inter_comp,
+                detect_num_iters
+        );
+        // Configure binarisation
+//        binarisation_method = ;
+
+
+
+        // Fetch STFT output
+
+
+        // possible filtering
+        // NMF
+        // - configuring the NMF class
+        //  - the number of components
+        //  - the construction of the W1 and W2 matrices
+        //  - setting the number of iterations
+        //  - setting the error and optimisation technique
+        // binarisation
+        // - setting the method of binarisation
+        // possible refinement
+    }
+    private void startDetection() {
+        // TODO: implement the startDetection method
+    }
+    private void stopDetection() {
+        // TODO: implement the stopDetection method
+    }
 
 
     // Result display
@@ -1030,9 +1122,9 @@ public class ScrollingActivity extends AppCompatActivity {
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempProcPlot(ImageView image) {
-        // Extract spectrogram from the proc_melspectrogram queue
-        while (proc_melspectrogram == null || proc_melspectrogram.size() == 0) {}
-        DenseMatrix temp = proc_melspectrogram.remove(0);
+        // Extract spectrogram from the proc_buffer queue
+        while (proc_buffer == null || proc_buffer.size() == 0) {}
+        DenseMatrix temp = proc_buffer.remove(0);
         DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
         for (int i = temp.rows-1; i >= 0; i--){
             for (int j = 0; j < temp.cols; j++) {
