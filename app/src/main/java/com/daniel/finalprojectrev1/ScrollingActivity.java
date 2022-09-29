@@ -120,7 +120,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private FileInputStream cap_imported_file_stream;
     private int cap_format;
     // Constants
-    private int CAP_QUEUE_SIZE = 50;
+    private final int CAP_QUEUE_SIZE = 50;
 
     /* Processing Settings */
     // Inputs
@@ -137,6 +137,20 @@ public class ScrollingActivity extends AppCompatActivity {
     private int proc_resolution;
     private double proc_window_time;
     private double proc_hop_time;
+
+    /* Detection Settings */
+    // Inputs
+    private EditText detect_fft_size_input;
+    private EditText detect_num_classes_input;
+    private EditText detect_num_inter_comp_input;
+    private EditText detect_num_iters_input;
+    private EditText detect_num_train_size_input;
+    // Values
+    private int detect_fft_size;
+    private int detect_num_classes;
+    private int detect_num_inter_comp;
+    private int detect_num_iters;
+    private int detect_num_train_size;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,6 +171,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 if (result.getResultCode() == Activity.RESULT_OK){
 //                    String file_loc = result.getData().getData().getPath().split(":")[1];
 //                    file_loc = file_loc.split(":")[1];
+                    assert result.getData() != null;
                     cap_imported_file = new File(
                             Environment.getExternalStorageDirectory().toString() +
                                     "/" + result.getData().getData().getPath().split(":")[1]
@@ -192,6 +207,13 @@ public class ScrollingActivity extends AppCompatActivity {
         proc_resolution_input = (EditText) findViewById(R.id.input_proc_resolution);
         proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
         proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
+
+        /* Detection Setting Inputs */
+        detect_fft_size_input = (EditText) findViewById(R.id.input_detect_fft_size);
+        detect_num_classes_input = (EditText) findViewById(R.id.input_detect_num_classes);
+        detect_num_inter_comp_input = (EditText) findViewById(R.id.input_detect_num_inter_comp);
+        detect_num_iters_input = (EditText) findViewById(R.id.input_detect_num_iters);
+        detect_num_train_size_input = (EditText) findViewById(R.id.input_detect_num_train_size);
 
         /* File import button logic*/
         cap_file_import_select_input.setOnClickListener(button -> {
@@ -293,7 +315,10 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data){
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // If this method breaks try removing the super.
+        super.onActivityResult(requestCode, resultCode, data);
+
         if (data == null) {
             return;
         }
@@ -301,7 +326,7 @@ public class ScrollingActivity extends AppCompatActivity {
             cap_imported_file = new File(
                     Environment.getExternalStorageDirectory().toString() +
                             "/" + data.getData().getPath().split(":")[1]
-                    );
+            );
 //            cap_imported_file = new File (data.getData().getPath());
         } else {
             cap_imported_file = new File(data.getClipData().getItemAt(0).getUri().getPath());
@@ -540,40 +565,31 @@ public class ScrollingActivity extends AppCompatActivity {
     private void configureRunnables(){
 
         // Audio Capture Runnable
-        mt_audio_capture_runnable = new Runnable() {
-            @Override
-            public void run() {
-                // Read data from the buffer when the buffer is full
-                Log.v("AudioCapture", "Audio read thread is starting...");
-                while(mt_audio_capture_flag){
-                    Log.v("AudioCapture", "Audio read thread is active...");
-                    readAudioCaptureBuffer();
-                }
-                Log.v("AudioCapture", "Audio read thread has been closed.");
+        mt_audio_capture_runnable = () -> {
+            // Read data from the buffer when the buffer is full
+            Log.v("AudioCapture", "Audio read thread is starting...");
+            while(mt_audio_capture_flag){
+                Log.v("AudioCapture", "Audio read thread is active...");
+                readAudioCaptureBuffer();
             }
+            Log.v("AudioCapture", "Audio read thread has been closed.");
         };
         // File Capture Runnable
-        mt_file_capture_runnable = new Runnable() {
-            @Override
-            public void run() {
-                Log.v("FileCapture", "File read thread is starting...");
-                while (mt_audio_capture_flag){
-                    Log.v("FileCapture", "File read thread is active...");
-                    readFileCaptureBuffer();
-                }
-                Log.v("FileCapture", "File read thread has been closed.");
+        mt_file_capture_runnable = () -> {
+            Log.v("FileCapture", "File read thread is starting...");
+            while (mt_audio_capture_flag){
+                Log.v("FileCapture", "File read thread is active...");
+                readFileCaptureBuffer();
             }
+            Log.v("FileCapture", "File read thread has been closed.");
         };
         // Audio Pre-Processing Runnable
-        mt_audio_processing_runnable = new Runnable() {
-            @Override
-            public void run() {
-                // Read data from the capture buffer and delete
-                Log.v("AudioProcessing", "Audio pre-processing thread is starting...");
-                // The infinite while loop is in preProcessing
-                preProcessing();
-                Log.v("AudioProcessing", "Audio pre-processing thread has been closed");
-            }
+        mt_audio_processing_runnable = () -> {
+            // Read data from the capture buffer and delete
+            Log.v("AudioProcessing", "Audio pre-processing thread is starting...");
+            // The infinite while loop is in preProcessing
+            preProcessing();
+            Log.v("AudioProcessing", "Audio pre-processing thread has been closed");
         };
     }
 
@@ -581,16 +597,24 @@ public class ScrollingActivity extends AppCompatActivity {
     // Permissions
     private void checkAllPermissions(){
         // Checking for required permissions
+        ArrayList<String> permissions = new ArrayList<>();
+        // Collect required and missing permissions in permissions array
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String []
-                    {Manifest.permission.RECORD_AUDIO}, 0);
+            permissions.add(Manifest.permission.RECORD_AUDIO);
         }
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, new String []
-                    {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
+        // Convert to String array
+        String[] temp = new String[permissions.size()];
+        temp = permissions.toArray(temp);
+        // Request permissions
+        for (int i = 0; i < temp.length; i++) {
+            ActivityCompat.requestPermissions(this, temp, 0);
+        }
+
     }
 
     private void checkPermission(Context context, Activity activity, String permission){
@@ -750,7 +774,7 @@ public class ScrollingActivity extends AppCompatActivity {
             Log.v("FileCapture", "Read entire file, ending read loop.");
             stopCapture();
         }
-        while (cap_queue_loc == 50){
+        while (cap_queue_loc == CAP_QUEUE_SIZE){
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
