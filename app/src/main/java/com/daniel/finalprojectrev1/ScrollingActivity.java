@@ -5,55 +5,35 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Paint;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
-import android.media.Image;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 
 import com.google.android.material.appbar.CollapsingToolbarLayout;
-import com.google.android.material.chip.Chip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContract;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
 import android.os.Environment;
-import android.os.SystemClock;
-import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.Spinner;
-import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
-
-import static android.Manifest.permission.RECORD_AUDIO;
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
-
-import org.ojalgo.array.ComplexArray;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -83,7 +63,6 @@ public class ScrollingActivity extends AppCompatActivity {
     private static final int AUDIO_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int AUDIO_FORMAT_INT8 = AudioFormat.ENCODING_PCM_8BIT;
     private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
-    private static final int AUDIO_FORMAT_INT32 = AudioFormat.ENCODING_PCM_32BIT;
     private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     private static final int AUDIO_MIN_FORMAT_SIZE = 1;
     // input format options
@@ -136,7 +115,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private int cap_time_interval;
     private int cap_buffer_size;
     private int cap_queue_loc;
-    private boolean cap_file_import_flag;
+    private boolean cap_file_import_flag = false;
     private File cap_imported_file;
     private FileInputStream cap_imported_file_stream;
     private int cap_format;
@@ -219,11 +198,9 @@ public class ScrollingActivity extends AppCompatActivity {
             if (!cap_file_import_flag){
                 cap_file_import_flag = true;
             }
-//            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-//            intent.addCategory(Intent.CATEGORY_OPENABLE);
-//            intent.setType("*/*");
-//            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-//            startActivityForResult(intent, 0);
+            cap_imported_file = null;
+            cap_imported_file_stream = null;
+
             getUserSelectedFile(activity_launcher);
         });
 
@@ -340,45 +317,65 @@ public class ScrollingActivity extends AppCompatActivity {
         model_snr_range_max = Integer.parseInt(snr_range_max_text.getHint().toString());
         model_num_training_samples = Integer.parseInt(num_training_sample_text.getHint().toString());
         // Loading defaults - capture settings
-        cap_sample_rate = Integer.parseInt(cap_sample_rate_input.getHint().toString());
-        cap_time_interval = model_clip_len;
-        cap_format = AUDIO_FORMAT_INT16;
-        String selected_audio_format = cap_format_input.getSelectedItem().toString();
+//        cap_sample_rate = Integer.parseInt(cap_sample_rate_input.getHint().toString());
+//        cap_time_interval = model_clip_len;
+//        cap_format = AUDIO_FORMAT_INT16;
+//        String selected_audio_format = cap_format_input.getSelectedItem().toString();
         // Loading defaults - processing settings
-        proc_fft_size = Integer.parseInt(proc_fft_size_input.getHint().toString());
-        proc_sample_rate = cap_sample_rate;
-        proc_num_time_frames = model_clip_len * proc_sample_rate;
-        proc_resolution = proc_sample_rate / proc_fft_size;
-        proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
-        proc_hop_time = proc_window_time / 2.0;
+//        proc_fft_size = Integer.parseInt(proc_fft_size_input.getHint().toString());
+//        proc_sample_rate = cap_sample_rate;
+//        proc_num_time_frames = model_clip_len * proc_sample_rate;
+//        proc_resolution = proc_sample_rate / proc_fft_size;
+//        proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
+//        proc_hop_time = proc_window_time / 2.0;
 
         // Processing User Inputs
         // Model import settings
         // TODO: need to add the checks for model import inputs, currently only the default settings
         //  are used.
         // Capture settings
+        // - capture sample rate
         if (!TextUtils.isEmpty(cap_sample_rate_input.getText())) {
             cap_sample_rate = Integer.parseInt(cap_sample_rate_input.getText().toString());
+        } else {
+            cap_sample_rate = Integer.parseInt(cap_sample_rate_input.getHint().toString());
         }
+        // - capture time interval
         if (!TextUtils.isEmpty(cap_time_interval_input.getText())) {
             cap_time_interval = Integer.parseInt(cap_time_interval_input.getText().toString());
+        } else {
+            cap_time_interval = model_clip_len;
         }
+        // - capture format
+        cap_format = AUDIO_FORMAT_INT16;
+        String selected_audio_format = cap_format_input.getSelectedItem().toString();
         if (selected_audio_format.matches(UI_AUDIO_FORMAT_INT16)) {
             cap_format = AUDIO_FORMAT_INT16;
-        } else {
+        } else if (selected_audio_format.matches(UI_AUDIO_FORMAT_FLOAT)){
             cap_format = AUDIO_FORMAT_FLOAT;
         }
 
         // Processing Settings
+        // - processing fft size
         if (!TextUtils.isEmpty(proc_fft_size_input.getText())) {
             proc_fft_size = Integer.parseInt(proc_fft_size_input.getText().toString());
+        } else {
+            proc_fft_size = Integer.parseInt(proc_fft_size_input.getHint().toString());
         }
+        // - processing sample rate
         if (!TextUtils.isEmpty(proc_sample_rate_input.getText())) {
             proc_sample_rate = Integer.parseInt(proc_sample_rate_input.getText().toString());
         }
-        proc_num_time_frames = model_clip_len * proc_sample_rate;
+        else {
+            proc_sample_rate = cap_sample_rate;
+        }
+        // - processing number of time frames
+        proc_num_time_frames = cap_time_interval * proc_sample_rate;
+        // - processing resolution
         proc_resolution = proc_sample_rate / proc_fft_size;
+        // - processing window time
         proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
+        // - processing hop time
         proc_hop_time = proc_window_time / 2.0;
 
         // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
@@ -503,10 +500,6 @@ public class ScrollingActivity extends AppCompatActivity {
             public void afterTextChanged(Editable editable) {
             }
         });
-
-        cap_file_import_flag = false;
-        cap_imported_file = null;
-        cap_imported_file_stream = null;
 
     }
 
@@ -635,7 +628,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 cap_format, cap_buffer_size);
         // Buffer initialisation
 //        cap_buffer = new byte[CAP_QUEUE_SIZE][cap_buffer_size];
-        cap_buffer = new ArrayList<byte[]>();
+        cap_buffer = new ArrayList<>();
         if (cap_file_import_flag){
             // Convert the File to input stream
             try {
@@ -647,15 +640,15 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void getUserSelectedFile(ActivityResultLauncher<Intent> activity_launcher){
-//        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-//        ActivityResultLauncher<Intent> activity_launcher = registerForActivityResult(
-//            new ActivityResultContracts.StartActivityForResult(),
-//                result -> {
-//                    if (result.getResultCode() == Activity.RESULT_OK) {
-//                        cap_imported_file = new File(result.getData().getData().getPath());
-//                    }
-//                });
-//        activity_launcher.launch(intent);
+
+//        // Old version (Deprecated by google) - working
+//        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+//        intent.addCategory(Intent.CATEGORY_OPENABLE);
+//        intent.setType("*/*");
+//        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+//        startActivityForResult(intent, 0);
+
+        // New version - working
         Intent file_intent = new Intent(Intent.ACTION_GET_CONTENT);
         file_intent.addCategory(Intent.CATEGORY_OPENABLE);
         file_intent.setType("*/*");
@@ -665,16 +658,18 @@ public class ScrollingActivity extends AppCompatActivity {
     private void startCapture(){
         // Set activity flag to true - as the system is starting
         mt_audio_capture_flag = true;
-        // Check if audio interface is in appropriate state
-        if (audio_recorder.getState() != AudioRecord.STATE_INITIALIZED){
-            Log.e("AudioCapture", "Audio interface is in incorrect state: desired:" +
-                    "initialised");
-            return;
-        }
+
         // Check if file is imported
         if (cap_file_import_flag){
             Log.d("Capture", "File mode is active");
             new Thread(mt_file_capture_runnable).start();
+            return;
+        }
+
+        // Check if audio interface is in appropriate state
+        if (audio_recorder.getState() != AudioRecord.STATE_INITIALIZED){
+            Log.e("AudioCapture", "Audio interface is in incorrect state: desired:" +
+                    "initialised");
             return;
         }
         Log.d("Capture", "Audio mode is active");
@@ -689,14 +684,14 @@ public class ScrollingActivity extends AppCompatActivity {
         // Stopping recording read thread
         mt_audio_capture_flag = false;
 
+        // Clearing file capture data
+        cap_imported_file = null;
+        cap_imported_file_stream = null;
         // Check if file import was used
         if (cap_file_import_flag){
             // Stopping file reading interface
             // Reset flags and clear files
             cap_file_import_flag = false;
-            cap_imported_file = null;
-            cap_imported_file_stream = null;
-
             return;
         }
 
@@ -753,13 +748,16 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         if (num_read == -1){
             Log.v("FileCapture", "Read entire file, ending read loop.");
-            mt_audio_capture_flag = false;
+            stopCapture();
         }
         while (cap_queue_loc == 50){
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            }
+            if (!mt_audio_capture_flag){
+                break;
             }
         }
         cap_buffer.add(temp);
@@ -782,7 +780,8 @@ public class ScrollingActivity extends AppCompatActivity {
         //  - REMEMBER THIS METHOD IS FOR CONFIGURATION ONLY - maybe creation of secondary thread?.
 
         // Initialise proc_melspectrogram
-        proc_melspectrogram = new ArrayList<DenseMatrix>();
+        proc_melspectrogram = new ArrayList<>();
+        proc_data = null;
     }
 
     private void startProcessing(){
@@ -809,6 +808,8 @@ public class ScrollingActivity extends AppCompatActivity {
                 window_size) / hop_size)+1;
         //  Finding window coefficients for HANN window
         DenseMatrix window_coeff = window_func(window_size, HANN);
+        // Pre-calculating the fft twiddle factor values
+        FFT fft = new FFT(proc_fft_size);
 
         // TODO: (MEL) decide fate of mel-spectrogram things, current implementation is wrong, not
         //  sure if mel-spectrum is needed at all. (removed in mean-time)
@@ -818,12 +819,16 @@ public class ScrollingActivity extends AppCompatActivity {
 
         // Thread infinite loop
         while(mt_audio_processing_flag) {
+            Log.v("AudioProcessing", "Audio Pre-processing thread is active...");
             // Wait if no value is available in the buffer
             while (cap_buffer == null || cap_buffer.size() == 0){
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                }
+                if (!mt_audio_processing_flag){
+                    return;
                 }
             }
             // Fetch data from the capture buffer queue
@@ -835,7 +840,7 @@ public class ScrollingActivity extends AppCompatActivity {
             // Perform STFT
             // TODO: (MEL) removed in mean-time
             proc_melspectrogram.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
-                    window_coeff/*, frequency_range, melscale_range*/));
+                    window_coeff, fft/*, frequency_range, melscale_range*/));
         }
     }
 
@@ -854,13 +859,12 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // TODO: (MEL) removed in mean-time.
     private DenseMatrix stft(DenseMatrix data, int window_size, int hop_size, int num_windows,
-                             DenseMatrix window_coeff/*, DenseMatrix frequency_range,
+                             DenseMatrix window_coeff, FFT fft/*, DenseMatrix frequency_range,
                              DenseMatrix melscale_range*/) {
 
         DenseMatrix window;
         DenseMatrixComplex spec_window;
         DenseMatrix real_spec_window = new DenseMatrix(num_windows, proc_fft_size/2);
-        FFT fft_class = new FFT(proc_fft_size);
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
 
@@ -869,15 +873,13 @@ public class ScrollingActivity extends AppCompatActivity {
             window = getValuesInRange(data, i*hop_size, i * hop_size + window_size).mul(
                     window_coeff);
             // Calculating the FFT of the window
-            fft_class.fft(window.getValues(), DenseMatrix.ones(proc_fft_size, 1).getValues());
-            spec_window = new DenseMatrixComplex(toDenseMatrix(fft_class.sol_x), toDenseMatrix(fft_class.sol_y));
-//            spec_window = fft(window);
-             // Use only half of the FFT output
+            fft.fft(window.getValues());
+            spec_window = new DenseMatrixComplex(toDenseMatrix(fft.getFFTReal()),
+                    toDenseMatrix(fft.getFFTImag()));
+            // Use only half of the FFT output
             spec_window = getValuesInRange(spec_window, 0, proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
-            DenseMatrix temp_real_spec_window = divComplexMatrix(spec_window,
-                    proc_fft_size/2.0).abs();
-//            DenseMatrix temp_real_spec_window = spec_window.abs();
+            DenseMatrix temp_real_spec_window = spec_window.abs();
             // Adding the window to the spectrogram
             for (int j = 0; j < real_spec_window.cols; j++){
                 real_spec_window.set(i, j, temp_real_spec_window.getValues()[j]);
@@ -893,15 +895,11 @@ public class ScrollingActivity extends AppCompatActivity {
 //                mel_window.set(j, i, temp[j]);
 //            }
         }
-
-        // TODO: Check the size of mel_window.minOverRows.minOverCols - should be a DenseMatrix of
-        //  size (1,1), which is only one value. Then its just extracted.
+        // Transposing the spectrogram to correct orientation
         real_spec_window = real_spec_window.t().pow(2);
+        // Normalising the spectrogram as well as converting the dB
         double reference = real_spec_window.minOverRows().minOverCols().getValues()[0];
-        Log.d("STFT", String.format("Reference min value: %f", reference));
         return ampToDB(real_spec_window, reference);
-//        DenseMatrix temp = ampToDB(real_spec_window, reference);
-//        return temp.add(temp.minOverCols().minOverRows().abs().getValues()[0]);
     }
 
     private DenseMatrixComplex fft(DenseMatrix data) {
@@ -917,7 +915,7 @@ public class ScrollingActivity extends AppCompatActivity {
             DenseMatrix factor_imag = new DenseMatrix(size, 1);
 
             for (int i = 0; i < size; i++){
-                double theta = 2 * Math.PI * i / size;
+                double theta = -2 * Math.PI * i / size;
                 factor_real.set(i, Math.cos(theta));
                 factor_imag.set(i, Math.sin(theta));
             }
