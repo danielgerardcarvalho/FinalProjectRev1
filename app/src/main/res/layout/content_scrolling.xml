@@ -196,19 +196,33 @@
 
             <TextView
                 android:id="@+id/import_model_filename_heading_view"
-                android:layout_width="171dp"
+                android:layout_width="150dp"
                 android:layout_height="wrap_content"
                 android:text="@string/model_filename_title"
                 android:textColor="@color/heading_1"
                 android:textStyle="italic" />
 
+            <ImageView
+                android:id="@+id/import_model_filename_marker_view"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@string/model_filename_marker" />
+
+
+            <Space
+                android:layout_width="24dp"
+                android:layout_height="24dp" />
+
             <TextView
                 android:id="@+id/import_model_filename_view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="filename"
                 android:textColor="@color/heading_2"
                 android:textStyle="italic" />
+
+
         </LinearLayout>
 
         <Space

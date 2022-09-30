@@ -108,6 +108,7 @@
     <string name="model_training_size">\tNumber of samples used in training:</string>
     <string name="model_num_components">\tNumber of internal components:</string>
     <string name="model_num_iterations">\tNumber of iterations:</string>
+    <string name="model_filename_marker">Indicates validity of filename</string>
     <!-- Capture Settings -->
     <string name="cap_import_file">\tImport file:</string>
     <string name="cap_import_file_select">\t Select a file</string>

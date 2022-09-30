@@ -50,9 +50,13 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private ActivityScrollingBinding binding;
 
-
     /* General Operation */ //TODO: maybe change some of these to individual sub-systems later?
     private boolean system_flag;
+
+    /* Model Import */
+    // model import constants
+    private static final String MODEL_DIR_LOC = Environment.getExternalStorageDirectory().toString()
+            + "/Documents/project/dictionaries/";
 
     /* Audio Capture */
     // capture constants
@@ -195,6 +199,7 @@ public class ScrollingActivity extends AppCompatActivity {
         // TODO: declaring the variables locally to reduce memory use
         /* Model Import Setting Inputs */
         TextView model_filename_view = (TextView) findViewById(R.id.import_model_filename_view);
+        ImageView model_filename_marker_view = (ImageView) findViewById(R.id.import_model_filename_marker_view);
         EditText num_class_events_text = (EditText) findViewById(R.id.input_model_import_num_event_classes);
         EditText clip_len_text = (EditText) findViewById(R.id.input_model_import_clip_len);
         EditText num_overlaps_text = (EditText) findViewById(R.id.input_model_import_num_overlaps);
@@ -322,8 +327,8 @@ public class ScrollingActivity extends AppCompatActivity {
         checkAllPermissions();
 
         /* Model Import Filename Update Logic */
-        modelFilenameUpdate(model_filename_view, num_class_events_text, clip_len_text,
-                num_overlaps_text, snr_range_min_text, snr_range_max_text,
+        modelFilenameUpdate(model_filename_view,  model_filename_marker_view, num_class_events_text,
+                clip_len_text, num_overlaps_text, snr_range_min_text, snr_range_max_text,
                 num_training_sample_text
         );
     }
@@ -476,18 +481,19 @@ public class ScrollingActivity extends AppCompatActivity {
         return true;
     }
 
-    private void modelFilenameUpdate(TextView model_filename_view, EditText num_class_events_text,
-                                     EditText clip_len_text, EditText num_overlaps_text,
-                                     EditText snr_range_min_text, EditText snr_range_max_text,
-                                     EditText num_training_sample_text) {
+    private void modelFilenameUpdate(TextView model_filename_view, ImageView model_filename_marker_view,
+                                     EditText num_class_events_text, EditText clip_len_text,
+                                     EditText num_overlaps_text, EditText snr_range_min_text,
+                                     EditText snr_range_max_text, EditText num_training_sample_text){
 
+        // Updating model filename
         num_class_events_text.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%ssnr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -495,6 +501,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         snr_range_max_text.getText().toString(),
                         num_training_sample_text.getText().toString()
                 ));
+                isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
             @Override
             public void afterTextChanged(Editable editable) {
@@ -506,7 +513,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%ssnr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -514,6 +521,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         snr_range_max_text.getText().toString(),
                         num_training_sample_text.getText().toString()
                 ));
+                isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
             @Override
             public void afterTextChanged(Editable editable) {
@@ -525,7 +533,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%ssnr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -533,6 +541,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         snr_range_max_text.getText().toString(),
                         num_training_sample_text.getText().toString()
                 ));
+                isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
             @Override
             public void afterTextChanged(Editable editable) {
@@ -544,7 +553,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%ssnr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -552,6 +561,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         snr_range_max_text.getText().toString(),
                         num_training_sample_text.getText().toString()
                 ));
+                isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
             @Override
             public void afterTextChanged(Editable editable) {
@@ -563,7 +573,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%ssnr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -571,6 +581,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         snr_range_max_text.getText().toString(),
                         num_training_sample_text.getText().toString()
                 ));
+                isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
             @Override
             public void afterTextChanged(Editable editable) {
@@ -582,7 +593,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%ssnr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -590,12 +601,25 @@ public class ScrollingActivity extends AppCompatActivity {
                         snr_range_max_text.getText().toString(),
                         num_training_sample_text.getText().toString()
                 ));
+                isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
             @Override
             public void afterTextChanged(Editable editable) {
             }
         });
 
+    }
+
+    private void isValidModelFilename(TextView filename, ImageView marker) {
+        File temp = new File(MODEL_DIR_LOC + filename.getText() + ".wav");
+        if (temp.exists()){
+            Log.v("ModelImportFile", "The file exists");
+            marker.setImageResource(R.drawable.ic_baseline_check_circle_24);
+
+        } else {
+            Log.v("ModelImportFile", "Current filename does not exist");
+            marker.setImageResource(R.drawable.ic_baseline_remove_circle_24);
+        }
     }
 
     private void uiFieldUpdate(TextView model_filename_view, EditText num_class_events_text,
@@ -650,6 +674,7 @@ public class ScrollingActivity extends AppCompatActivity {
         classifier_num_train_size_input.setText(String.format("%d", classifier_num_train_size));
 
     }
+
 
     private void configureRunnables(){
 
