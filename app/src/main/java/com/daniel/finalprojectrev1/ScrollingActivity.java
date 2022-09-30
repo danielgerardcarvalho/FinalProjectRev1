@@ -733,8 +733,17 @@ public class ScrollingActivity extends AppCompatActivity {
         int min_buffer_size = AudioRecord.getMinBufferSize(cap_sample_rate, AUDIO_CHANNELS,
                 cap_format);
         // Calculating buffer size
-        cap_buffer_size = (int) cap_sample_rate * cap_time_interval * (cap_format /
-                AUDIO_MIN_FORMAT_SIZE);
+        int multiplier = 2;
+        if (cap_format == AUDIO_FORMAT_INT8){
+            multiplier = 1;
+        } else if (cap_format == AUDIO_FORMAT_INT16){
+            multiplier = 2;
+        } else if (cap_format == AUDIO_FORMAT_FLOAT) {
+            multiplier = 4;
+        }
+        cap_buffer_size = (int) cap_sample_rate * cap_time_interval * (multiplier/*cap_format /
+                AUDIO_MIN_FORMAT_SIZE*/);
+
         // Checking if cap_buffer_size is large enough
         if (cap_buffer_size < min_buffer_size){
             Log.e("AudioCapture", String.format("cap_buffer_size: is too small\n\tcurrent:%d" +
@@ -751,6 +760,7 @@ public class ScrollingActivity extends AppCompatActivity {
             // Convert the File to input stream
             try {
                 cap_imported_file_stream = new FileInputStream(cap_imported_file);
+
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
@@ -953,7 +963,8 @@ public class ScrollingActivity extends AppCompatActivity {
             // Fetch data from the capture buffer queue
             byte[] temp = cap_buffer.remove(0);
             // Converting from bytes to short
-            proc_data = bytesToShort(temp);
+            proc_data = bytesToShort(temp, cap_format);
+            Log.d("BufferSize", String.format("%d -> %d", cap_buffer_size, proc_data.length));
             // Perform STFT
             // TODO: (MEL) removed in mean-time
             proc_buffer.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
@@ -1301,11 +1312,21 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Convert from byte array to short[]
-    private short[] bytesToShort(byte[] array) {
-        short [] ret = new short[(int)(array.length/2)];
+    private short[] bytesToShort(byte[] array, int format) {
+        short [] ret;
+        if (format == AUDIO_FORMAT_INT8){
+            ret = new short[(int)(array.length)];
+        } else if (format == AUDIO_FORMAT_INT16) {
+            ret = new short[(int) (array.length / 2)];
+        } else if (format == AUDIO_FORMAT_FLOAT) {
+            ret = new short[(int) (array.length / 4)];
+        } else {
+            ret = new short[(int)(array.length/2)];
+        }
+//        short [] ret = new short[(int)(array.length/2)];
 
         ByteBuffer buffer = ByteBuffer.wrap(array);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        buffer.order(ByteOrder.nativeOrder());
         int count = 0;
         while(buffer.hasRemaining()){
             ret[count++] = buffer.getShort();

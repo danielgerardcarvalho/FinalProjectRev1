@@ -126,7 +126,7 @@
     <string name="classifier_fft_size">\tClassifier FFT size:</string>
     <string name="classifier_num_classes">\tNumber of detectable classes:</string>
     <string name="classifier_num_inter_comp">\tNumber of internal components:</string>
-    <string name="classifier_num_iters">\tNumber of internal interactions:</string>
+    <string name="classifier_num_iters">\tNumber of internal iterations:</string>
     <string name="classifier_num_train_size">\tNumber of training samples:</string>
 
 
