@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Bundle;
 
 import com.google.android.material.appbar.CollapsingToolbarLayout;
@@ -21,6 +22,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
 import android.os.Environment;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -59,7 +61,7 @@ public class ScrollingActivity extends AppCompatActivity {
     /* Model Import */
     // model import constants
     private static final String MODEL_DIR_LOC = Environment.getExternalStorageDirectory().toString()
-            + "/Documents/project/dictionaries/";
+            + "/Project/dictionaries/";
     private static final String MODEL_FILE_EXT = ".json";
     // model import variables
     private File model_import_file;
@@ -180,8 +182,6 @@ public class ScrollingActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         CollapsingToolbarLayout toolBarLayout = binding.toolbarLayout;
         toolBarLayout.setTitle(getTitle());
-
-
 
         /* Configure User Selection Register */
         ActivityResultLauncher<Intent> activity_launcher = registerForActivityResult(
@@ -769,6 +769,7 @@ public class ScrollingActivity extends AppCompatActivity {
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            permissions.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
         }
         // Convert to String array
         String[] temp = new String[permissions.size()];
@@ -777,7 +778,14 @@ public class ScrollingActivity extends AppCompatActivity {
         for (int i = 0; i < temp.length; i++) {
             ActivityCompat.requestPermissions(this, temp, 0);
         }
-
+        // Special Permissions
+        if (! Environment.isExternalStorageManager()){
+            Intent intent = new Intent();
+            intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            Uri uri = Uri.fromParts("package", this.getPackageName(), null);
+            intent.setData(uri);
+            startActivity(intent);
+        }
     }
 
     private void checkPermission(Context context, Activity activity, String permission){
