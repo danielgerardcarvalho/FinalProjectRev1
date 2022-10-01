@@ -42,6 +42,7 @@ dependencies {
     implementation files('libs\\Jeigen-onefat.jar')
     implementation files('libs\\jna-4.1.0.jar')
     implementation 'org.quanqi:mpandroidchart:1.7.5'
+    implementation 'de.gerdi-project:GSON:6.0.6'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'

@@ -6,6 +6,16 @@ import jeigen.DenseMatrix;
 import jeigen.SparseMatrixLil;
 
 public class NMF {
+
+    // Import struct-like-class
+    public static class NMF_Mini {
+        double[][] W1;
+        double[][] W2;
+        double training_cost;
+
+        NMF_Mini(){}
+    }
+
     // non-negative data matrix
     private SparseMatrixLil V1;
     // annotated activity data matrix
@@ -27,6 +37,8 @@ public class NMF {
 
     // optimisation error array
     private ArrayList<Double> error;
+    // final training error
+    private double final_training_error;
     // max number of optimisation iterations
     private int iter_limit;
 
@@ -82,10 +94,16 @@ public class NMF {
     private void loadV1(SparseMatrixLil data) {}
 
     // TODO:implement - high
-    private void loadW1() {}
+    public void loadW1() {}
 
     // TODO: implement - high
-    private void loadW2() {}
+    public void loadW2() {}
+
+    // TODO: implememnt - high
+    public void loadModel(NMF temp_obj) {
+        this.W1 = temp_obj.W1;
+        this.W2 = temp_obj.W2;
+    }
 
 
     /* Get methods */

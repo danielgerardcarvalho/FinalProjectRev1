@@ -556,7 +556,7 @@
                 android:autoText="false"
                 android:ems="10"
                 android:focusable="false"
-                android:hint="50"
+                android:hint="optional - (default) Number of internal components in Import"
                 android:inputType="number"
                 android:singleLine="true"
                 android:textSize="14sp" />
@@ -577,26 +577,6 @@
                 android:ems="10"
                 android:focusable="false"
                 android:hint="100"
-                android:inputType="number"
-                android:singleLine="true"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/view_classifier_num_train_size"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/classifier_num_train_size"
-                android:textColor="@color/heading_1" />
-
-            <EditText
-                android:id="@+id/input_classifier_num_train_size"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:autoText="false"
-                android:ems="10"
-                android:focusable="false"
-                android:hint="2"
                 android:inputType="number"
                 android:singleLine="true"
                 android:textSize="14sp" />

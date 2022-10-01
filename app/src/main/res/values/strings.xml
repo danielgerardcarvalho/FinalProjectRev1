@@ -107,7 +107,7 @@
     <string name="model_snr_range">\tSNR range:</string>
     <string name="model_training_size">\tNumber of samples used in training:</string>
     <string name="model_num_components">\tNumber of internal components:</string>
-    <string name="model_num_iterations">\tNumber of iterations:</string>
+    <string name="model_num_iterations">\tNumber of iterations in training: - (unused)</string>
     <string name="model_filename_marker">Indicates validity of filename</string>
     <!-- Capture Settings -->
     <string name="cap_import_file">\tImport file:</string>
@@ -128,8 +128,6 @@
     <string name="classifier_num_classes">\tNumber of detectable classes:</string>
     <string name="classifier_num_inter_comp">\tNumber of internal components:</string>
     <string name="classifier_num_iters">\tNumber of internal iterations:</string>
-    <string name="classifier_num_train_size">\tNumber of training samples:</string>
-
 
     <!-- Preference Titles -->
     <string name="messages_header">Messages</string>

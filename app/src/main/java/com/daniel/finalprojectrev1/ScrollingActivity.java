@@ -34,11 +34,14 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
+import com.google.gson.Gson;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -57,6 +60,9 @@ public class ScrollingActivity extends AppCompatActivity {
     // model import constants
     private static final String MODEL_DIR_LOC = Environment.getExternalStorageDirectory().toString()
             + "/Documents/project/dictionaries/";
+    private static final String MODEL_FILE_EXT = ".json";
+    // model import variables
+    private File model_import_file;
 
     /* Audio Capture */
     // capture constants
@@ -118,6 +124,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private int model_snr_range_min;
     private int model_snr_range_max;
     private int model_num_training_samples;
+    private int model_num_inter_comp;
 
     /* UI Associated Capture Settings */
     // Inputs - // TODO: removing to reduce memory use
@@ -156,13 +163,11 @@ public class ScrollingActivity extends AppCompatActivity {
 //    private EditText classifier_num_classes_input;
 //    private EditText classifier_num_inter_comp_input;
 //    private EditText classifier_num_iters_input;
-//    private EditText classifier_num_train_size_input;
     // Values
     private int classifier_fft_size;
     private int classifier_num_classes;
     private int classifier_num_inter_comp;
     private int classifier_num_iters;
-    private int classifier_num_train_size;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -206,6 +211,8 @@ public class ScrollingActivity extends AppCompatActivity {
         EditText snr_range_min_text = (EditText) findViewById(R.id.input_model_import_snr_range_min);
         EditText snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
         EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
+        EditText num_inter_comp_text = (EditText) findViewById(R.id.input_model_import_num_components);
+
         // TODO: temporary image view, used to test the plot output and test the capture and
         //  processing functions.
         ImageView image = findViewById(R.id.imageView);
@@ -232,7 +239,6 @@ public class ScrollingActivity extends AppCompatActivity {
         EditText classifier_num_classes_input = (EditText) findViewById(R.id.input_classifier_num_classes);
         EditText classifier_num_inter_comp_input = (EditText) findViewById(R.id.input_classifier_num_inter_comp);
         EditText classifier_num_iters_input = (EditText) findViewById(R.id.input_classifier_num_iters);
-        EditText classifier_num_train_size_input = (EditText) findViewById(R.id.input_classifier_num_train_size);
 
         /* File import button logic*/
         cap_file_import_select_input.setOnClickListener(button -> {
@@ -250,13 +256,22 @@ public class ScrollingActivity extends AppCompatActivity {
         fab.setOnClickListener(view -> {
 
             // Importing input user settings and checking if these settings are valid
-            boolean valid_flag = convertSettingInputs( num_class_events_text, clip_len_text,
+            boolean valid_flag = convertSettingInputs( model_filename_view, model_filename_marker_view,
+                    num_class_events_text, clip_len_text, num_overlaps_text, snr_range_min_text,
+                    snr_range_max_text, num_training_sample_text, num_inter_comp_text,
+                    cap_sample_rate_input, cap_time_interval_input, cap_format_input,
+                    proc_fft_size_input, proc_sample_rate_input, classifier_fft_size_input,
+                    classifier_num_classes_input, classifier_num_inter_comp_input,
+                    classifier_num_iters_input
+            );
+            // Update UI fields
+            uiFieldUpdate(model_filename_view, num_class_events_text, clip_len_text,
                     num_overlaps_text, snr_range_min_text, snr_range_max_text,
                     num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
                     cap_format_input, proc_fft_size_input, proc_sample_rate_input,
-                    classifier_fft_size_input, classifier_num_classes_input,
-                    classifier_num_inter_comp_input, classifier_num_iters_input,
-                    classifier_num_train_size_input
+                    proc_num_time_frames_input, proc_resolution_input, proc_window_time_input,
+                    proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
+                    classifier_num_inter_comp_input, classifier_num_iters_input
             );
             if (!valid_flag) {
                 Snackbar.make(view, "Settings are not valid", Snackbar.LENGTH_LONG)
@@ -266,6 +281,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
             // Check if already running
             if (system_flag){
+                // UI displays
                 Snackbar.make(view, "Stopping system", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
                 // Change icon image
@@ -285,6 +301,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 }
                 system_flag = false;
             } else {
+                // UI displays
                 Snackbar.make(view, "Starting system", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
                 // Change icon image
@@ -295,19 +312,10 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Configure processing system
                 configureProcessing();
                 // Configure classifier system
-                configureClassifier();
+                configureClassifier(model_filename_view, model_filename_marker_view);
 //                // Configure monitoring system
 //                configureMonitor();
 
-                // Update UI fields
-                uiFieldUpdate(model_filename_view, num_class_events_text, clip_len_text,
-                        num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                        num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
-                        cap_format_input, proc_fft_size_input, proc_sample_rate_input,
-                        proc_num_time_frames_input, proc_resolution_input, proc_window_time_input,
-                        proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
-                        classifier_num_inter_comp_input, classifier_num_iters_input,
-                        classifier_num_train_size_input);
 
                 // Starting the sub-systems
                 startCapture();
@@ -373,10 +381,12 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
-    private boolean convertSettingInputs(EditText num_class_events_text, EditText clip_len_text,
+    private boolean convertSettingInputs(TextView model_filename_view, ImageView model_filename_marker_view,
+                                         EditText num_class_events_text, EditText clip_len_text,
                                          EditText num_overlaps_text, EditText snr_range_min_text,
                                          EditText snr_range_max_text,
                                          EditText num_training_sample_text,
+                                         EditText num_inter_comp_text,
                                          EditText cap_sample_rate_input,
                                          EditText cap_time_interval_input,
                                          Spinner cap_format_input, EditText proc_fft_size_input,
@@ -384,20 +394,55 @@ public class ScrollingActivity extends AppCompatActivity {
                                          EditText classifier_fft_size_input,
                                          EditText classifier_num_classes_input,
                                          EditText classifier_num_inter_comp_input,
-                                         EditText classifier_num_iters_input,
-                                         EditText classifier_num_train_size_input) {
-        // Loading defaults - model import settings
-        model_num_class_events = Integer.parseInt(num_class_events_text.getHint().toString());
-        model_clip_len = Integer.parseInt(clip_len_text.getHint().toString());
-        model_num_overlaps = Integer.parseInt(num_overlaps_text.getHint().toString());
-        model_snr_range_min = Integer.parseInt(snr_range_min_text.getHint().toString());
-        model_snr_range_max = Integer.parseInt(snr_range_max_text.getHint().toString());
-        model_num_training_samples = Integer.parseInt(num_training_sample_text.getHint().toString());
+                                         EditText classifier_num_iters_input) {
 
-        // Processing User Inputs
+        /* Processing User Inputs */
         // Model import settings
         // TODO: need to add the checks for model import inputs, currently only the default settings
         //  are used.
+        // - model import number of event classes
+        if (!TextUtils.isEmpty(num_class_events_text.getText())) {
+            model_num_class_events = Integer.parseInt(num_class_events_text.getText().toString());
+        } else {
+            model_num_class_events = Integer.parseInt(num_class_events_text.getHint().toString());
+        }
+        // - model import clip length
+        if (!TextUtils.isEmpty(clip_len_text.getText())) {
+            model_clip_len = Integer.parseInt(clip_len_text.getText().toString());
+        } else {
+            model_clip_len = Integer.parseInt(clip_len_text.getHint().toString());
+        }
+        // - model import number of overlaps
+        if (!TextUtils.isEmpty(num_overlaps_text.getText())) {
+            model_num_overlaps = Integer.parseInt(num_overlaps_text.getText().toString());
+        } else {
+            model_num_overlaps = Integer.parseInt(num_overlaps_text.getHint().toString());
+        }
+        // - model import snr range min
+        if (!TextUtils.isEmpty(snr_range_min_text.getText())) {
+            model_snr_range_min = Integer.parseInt(snr_range_min_text.getText().toString());
+        } else {
+            model_snr_range_min = Integer.parseInt(snr_range_min_text.getHint().toString());
+        }
+        // - model import snr range max
+        if (!TextUtils.isEmpty(snr_range_max_text.getText())) {
+            model_snr_range_max = Integer.parseInt(snr_range_max_text.getText().toString());
+        } else {
+            model_snr_range_max = Integer.parseInt(snr_range_max_text.getHint().toString());
+        }
+        // - model import number of training samples
+        if (!TextUtils.isEmpty(num_training_sample_text.getText())) {
+            model_num_training_samples = Integer.parseInt(num_training_sample_text.getText().toString());
+        } else {
+            model_num_training_samples = Integer.parseInt(num_training_sample_text.getHint().toString());
+        }
+        // model import number of internal components
+        if (!TextUtils.isEmpty(num_inter_comp_text.getText())) {
+            model_num_inter_comp = Integer.parseInt(num_inter_comp_text.getText().toString());
+        } else {
+            model_num_inter_comp = Integer.parseInt(num_inter_comp_text.getHint().toString());
+        }
+
         // Capture settings
         // - capture sample rate
         if (!TextUtils.isEmpty(cap_sample_rate_input.getText())) {
@@ -460,7 +505,7 @@ public class ScrollingActivity extends AppCompatActivity {
         if (!TextUtils.isEmpty(classifier_num_inter_comp_input.getText())) {
             classifier_num_inter_comp = Integer.parseInt(classifier_num_inter_comp_input.getText().toString());
         } else {
-            classifier_num_inter_comp = Integer.parseInt(classifier_num_inter_comp_input.getHint().toString());
+            classifier_num_inter_comp = model_num_inter_comp;
         }
         // - classifier number of internal iterations
         if (!TextUtils.isEmpty(classifier_num_iters_input.getText())) {
@@ -468,16 +513,15 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getHint().toString());
         }
-        // - classifier training size
-        if (!TextUtils.isEmpty(classifier_num_train_size_input.getText())) {
-            classifier_num_train_size = Integer.parseInt(classifier_num_train_size_input.getText().toString());
-        } else {
-            classifier_num_train_size = Integer.parseInt(classifier_num_train_size_input.getHint().toString());
-        }
 
         // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
         //  a system that states which settings are missing or in error. Therefore returning true
         //  or false.
+
+        // TODO: possibly use this function return value and other booleans to check if system is
+        //  correctly configured, may have issue if running straight from default values.
+        isValidModelFilename(model_filename_view, model_filename_marker_view);
+
         return true;
     }
 
@@ -493,7 +537,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -513,7 +557,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -533,7 +577,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -553,7 +597,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -573,7 +617,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -593,7 +637,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_c%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -610,15 +654,17 @@ public class ScrollingActivity extends AppCompatActivity {
 
     }
 
-    private void isValidModelFilename(TextView filename, ImageView marker) {
-        File temp = new File(MODEL_DIR_LOC + filename.getText() + ".wav");
+    private boolean isValidModelFilename(TextView filename, ImageView marker) {
+        File temp = new File(MODEL_DIR_LOC + filename.getText() + MODEL_FILE_EXT);
         if (temp.exists()){
             Log.v("ModelImportFile", "The file exists");
             marker.setImageResource(R.drawable.ic_baseline_check_circle_24);
+            return true;
 
         } else {
             Log.v("ModelImportFile", "Current filename does not exist");
             marker.setImageResource(R.drawable.ic_baseline_remove_circle_24);
+            return false;
         }
     }
 
@@ -633,8 +679,7 @@ public class ScrollingActivity extends AppCompatActivity {
                                EditText classifier_fft_size_input,
                                EditText classifier_num_classes_input,
                                EditText classifier_num_inter_comp_input,
-                               EditText classifier_num_iters_input,
-                               EditText classifier_num_train_size_input){
+                               EditText classifier_num_iters_input){
         // Update the text field of all input spaces
         // Model import
         num_class_events_text.setText(String.format("%d", model_num_class_events));
@@ -643,7 +688,7 @@ public class ScrollingActivity extends AppCompatActivity {
         snr_range_min_text.setText(String.format("%d", model_snr_range_min));
         snr_range_max_text.setText(String.format("%d", model_snr_range_max));
         num_training_sample_text.setText(String.format("%d", model_num_training_samples));
-        model_filename_view.setText(String.format("dictW_c%s_len%s_ol%ssnr(%s, %s)_tsize%s",
+        model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
                 num_class_events_text.getText().toString(),
                 clip_len_text.getText().toString(),
                 num_overlaps_text.getText().toString(),
@@ -671,8 +716,6 @@ public class ScrollingActivity extends AppCompatActivity {
         classifier_num_classes_input.setText(String.format("%d", classifier_num_classes));
         classifier_num_inter_comp_input.setText(String.format("%d", classifier_num_inter_comp));
         classifier_num_iters_input.setText(String.format("%d", classifier_num_iters));
-        classifier_num_train_size_input.setText(String.format("%d", classifier_num_train_size));
-
     }
 
 
@@ -748,6 +791,28 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Import
+    private NMF.NMF_Mini importModelFile(String filename) {
+        Log.v("ImportModelFile", "Attempting to import model file...");
+        Log.v("ImportModelFile", "File path: " + MODEL_DIR_LOC + filename + MODEL_FILE_EXT);
+        NMF.NMF_Mini nmf_mini = null;
+        File file = new File(MODEL_DIR_LOC + filename + MODEL_FILE_EXT);
+        try{
+            // Final check for files existence
+            if (!file.exists()) {
+                Log.e("ImportModelFileERROR", "File does not exist");
+                return null;
+            }
+            // Reading in the JSON file
+            Reader reader = new FileReader(file);
+            // Loading the dictionaries
+            nmf_mini = new Gson().fromJson(reader, NMF.NMF_Mini.class);
+            Log.v("ImportModelFile", "Imported model from file");
+        } catch (Exception e) {
+            Log.e("ImportModelFileERROR", "Failed to import model from file");
+            e.printStackTrace();
+        }
+        return nmf_mini;
+    }
 
 
     // Capture
@@ -1144,7 +1209,15 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Classifier
-    private void configureClassifier() {
+    private void configureClassifier(TextView model_filename_view,
+                                     ImageView model_filename_marker_view) {
+
+        // Importing model file
+        NMF.NMF_Mini temp_nmf_mini;
+        if (isValidModelFilename(model_filename_view, model_filename_marker_view)) {
+             temp_nmf_mini = importModelFile(model_filename_view.getText().toString());
+        }
+
         // TODO: implement the configuration of the Classifier stage
         // Input variable initialisation
         classifier_data = null;
