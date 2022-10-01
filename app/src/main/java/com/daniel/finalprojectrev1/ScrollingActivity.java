@@ -326,8 +326,8 @@ public class ScrollingActivity extends AppCompatActivity {
 
                 // Display results
 //                tempTestPlot(image);
-                tempProcPlot(image);
-//                tempCapPlot(image);
+//                tempProcPlot(image);
+                tempCapPlot(image);
 
                 system_flag = true;
             }
@@ -870,6 +870,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
+    // TODO: ojalgo
     private void getUserSelectedFile(ActivityResultLauncher<Intent> activity_launcher){
 
 //        // Old version (Deprecated by google) - working
@@ -886,6 +887,7 @@ public class ScrollingActivity extends AppCompatActivity {
         activity_launcher.launch(file_intent);
     }
 
+    // TODO: ojalgo
     private void startCapture(){
         /* Finalises configuration and starts sub-system */
 
@@ -912,6 +914,7 @@ public class ScrollingActivity extends AppCompatActivity {
         new Thread(mt_audio_capture_runnable).start();
     }
 
+    // TODO: ojalgo
     private void stopCapture(){
 
         // Stopping recording read thread
@@ -951,6 +954,7 @@ public class ScrollingActivity extends AppCompatActivity {
         audio_recorder = null;
     }
 
+    // TODO: ojalgo
     private void readAudioCaptureBuffer(){
         // Clear the input buffer with one byte read
         byte [] temp = new byte[cap_buffer_size];
@@ -968,6 +972,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 "\n\tQueue location:%d", num_read, cap_buffer.size()));
     }
 
+    // TODO: ojalgo
     private void readFileCaptureBuffer(){
         // Clear first run flag
         cap_first_run = false;
@@ -1001,6 +1006,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Processing
+    // TODO: ojalgo
     private void configureProcessing() {
         /* Configures processing variables before the start of any sub-systems*/
 
@@ -1010,6 +1016,7 @@ public class ScrollingActivity extends AppCompatActivity {
         proc_buffer = new ArrayList<>();
     }
 
+    // TODO: ojalgo
     private void startProcessing(){
         /* Finalises configuration and starts sub-system */
 
@@ -1019,11 +1026,13 @@ public class ScrollingActivity extends AppCompatActivity {
         new Thread(mt_audio_processing_runnable).start();
     }
 
+    // TODO: ojalgo
     private void stopProcessing(){
         // Stopping pre-processing thread
         mt_audio_processing_flag = false;
     }
 
+    // TODO: ojalgo
     private void preProcessing(){
         // Finding window size
         int window_size = (int) Math.ceil(proc_window_time * proc_sample_rate);
@@ -1073,6 +1082,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
+    // TODO: ojalgo
     private DenseMatrix window_func(int window_size, int window_type) {
         DenseMatrix ret = new DenseMatrix(window_size,1);
 
@@ -1086,6 +1096,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
+    // TODO: ojalgo
     // TODO: (MEL) removed in mean-time.
     private DenseMatrix stft(DenseMatrix data, int window_size, int hop_size, int num_windows,
                              DenseMatrix window_coeff, FFT fft/*, DenseMatrix frequency_range,
@@ -1142,6 +1153,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return ampToDB(real_spec_window, reference);
     }
 
+    // TODO: ojalgo
     // TODO: currently this fft method in not used (Deprecated for use of FFT class)
     private DenseMatrixComplex fft(DenseMatrix data) {
         int size = data.getValues().length;
@@ -1169,6 +1181,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
+    // TODO: ojalgo
     // TODO: currently this mel conversion method is not used (Deprecated as mel scale is not used)
     // Converts frequency spectrum to melscale
     private double[] specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
@@ -1222,6 +1235,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Classifier
+    // TODO: ojalgo
     private void configureClassifier(TextView model_filename_view,
                                      ImageView model_filename_marker_view) {
         /* Configures classifier variables before the start of any sub-systems*/
@@ -1249,6 +1263,7 @@ public class ScrollingActivity extends AppCompatActivity {
         classifier_buffer = new ArrayList<>();
     }
 
+    // TODO: ojalgo
     private void startClassifier() {
         /* Finalises configuration and starts sub-system */
 
@@ -1258,11 +1273,13 @@ public class ScrollingActivity extends AppCompatActivity {
         new Thread(mt_classifier_runnable).start();
     }
 
+    // TODO: ojalgo
     private void stopClassifier() {
         // Stopping classifier thread
         mt_classifier_flag = false;
     }
 
+    // TODO: ojalgo
     private void classifier() {
         // TODO: basic configuration before starting the loop
 
@@ -1303,9 +1320,9 @@ public class ScrollingActivity extends AppCompatActivity {
             nmf.loadV1(classifier_data);
             // Starting nmf calculation
             nmf.start();
-            nmf.stop();
             // Retrieving results from nmf class object
             // TODO: classifier: implement results reception
+            classifier_buffer.add(nmf.getW2().toDense());
             // Adding results to classifier buffer
             // TODO: classifier: implement buffer addition
 //            classifier_buffer.add()
@@ -1313,6 +1330,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Result display
+    // TODO: ojalgo
     private void tempTestPlot(ImageView image){
         // Setting the matrix size
         int num_freq_bins = 128;
@@ -1335,20 +1353,7 @@ public class ScrollingActivity extends AppCompatActivity {
         SpectrogramView sp_view_obj = new SpectrogramView(this, spec_matrix, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
-    private void tempProcPlot(ImageView image) {
-        // Extract spectrogram from the proc_buffer queue
-        while (proc_buffer == null || proc_buffer.size() == 0) {}
-        DenseMatrix temp = proc_buffer.remove(0);
-        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
-        for (int i = temp.rows-1; i >= 0; i--){
-            for (int j = 0; j < temp.cols; j++) {
-                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
-            }
-        }
-        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
-        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
-        image.setImageBitmap(sp_view_obj.bmp);
-    }
+    // TODO: ojalgo
     private void tempCapPlot(ImageView image){
         while (proc_data == null){}
         int width = Math.min(proc_data.length, 22050);
@@ -1376,12 +1381,43 @@ public class ScrollingActivity extends AppCompatActivity {
         SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
-
+    // TODO: ojalgo
+    private void tempProcPlot(ImageView image) {
+        // Extract spectrogram from the proc_buffer queue
+        while (proc_buffer == null || proc_buffer.size() == 0) {}
+        DenseMatrix temp = proc_buffer.remove(0);
+        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
+        for (int i = temp.rows-1; i >= 0; i--){
+            for (int j = 0; j < temp.cols; j++) {
+                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
+            }
+        }
+        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
+        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+        image.setImageBitmap(sp_view_obj.bmp);
+    }
+    // TODO: ojalgo
+    private void tempClassifierPlot(ImageView image) {
+        // Extract spectrogram from the classifier_buffer queue
+        while (classifier_buffer == null || classifier_buffer.size() == 0) {}
+        DenseMatrix temp = classifier_buffer.remove(0);
+//        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
+//        for (int i = temp.rows-1; i >= 0; i--){
+//            for (int j = 0; j < temp.cols; j++) {
+//                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
+//            }
+//        }
+//        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
+//        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+        SpectrogramView sp_view_obj = new SpectrogramView(this, temp.div(temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+        image.setImageBitmap(sp_view_obj.bmp);
+    }
 
     // Data handling
 
 
     /* Helpers */
+    // TODO: ojalgo
     // Creates a DenseMatrix, with values inbetween min (inclusive) and max (exclusive), with steps
     // of size.
     private DenseMatrix createArray(double min, double max, int step){
@@ -1395,6 +1431,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return temp;
     }
 
+    // TODO: ojalgo
     // Returns a portion of a DenseMatrix, the range is inclusive to min, and exclusive to max.
     private DenseMatrix getValuesInRange(DenseMatrix array, int min, int max) {
         DenseMatrix ret = new DenseMatrix(max - min, 1);
@@ -1405,6 +1442,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
+    // TODO: ojalgo
     // Returns a portion of a DenseMatrixComplex, the range is inclusive to min, exclusive to max.
     private DenseMatrixComplex getValuesInRange(DenseMatrixComplex array, int min, int max){
         DenseMatrix ret_real = getValuesInRange(array.real(), min, max);
@@ -1412,6 +1450,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return new DenseMatrixComplex(ret_real, ret_imag);
     }
 
+    // TODO: ojalgo
     // Converts frequency spectrum to melscale
     private DenseMatrix specToDenseMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
         int freq_count = 0;
@@ -1451,11 +1490,13 @@ public class ScrollingActivity extends AppCompatActivity {
         return mel_scale_spectrum;
     }
 
+    // TODO: ojalgo
     // Convert from amplitude values to dB values
     private DenseMatrix ampToDB(DenseMatrix array, double ref) {
         return ((array.div(ref)).log()).mul(20);
     }
 
+    // TODO: ojalgo
     // Convert from byte array to short[]
     private short[] bytesToShort(byte[] array, int format) {
         short [] ret;
@@ -1491,6 +1532,7 @@ public class ScrollingActivity extends AppCompatActivity {
 //        return ret;
     }
 
+    // TODO: ojalgo
     private int[] bytesToInt(byte[] array) {
         int[] ret = new int[(int) (array.length/4)];
 
@@ -1517,6 +1559,7 @@ public class ScrollingActivity extends AppCompatActivity {
 //        return ret;
     }
 
+    // TODO: ojalgo
     // Concatenate two DenseMatrixComplex matrices
     private DenseMatrixComplex concatComplexMatrix(DenseMatrixComplex mat1, DenseMatrixComplex mat2,
                                                    int axis) {
@@ -1563,6 +1606,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return new DenseMatrixComplex(real, imag);
     }
 
+    // TODO: ojalgo
     // Converts an array/matrix into a DenseMatrix (short[])
     private DenseMatrix toDenseMatrix(short[] input) {
         // Finding the size of the array
@@ -1576,6 +1620,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return ret;
     }
+    // TODO: ojalgo
     // Converts an array/matrix into a DenseMatrix (int[])
     private DenseMatrix toDenseMatrix(int[] input) {
         // Finding the size of the array
@@ -1589,6 +1634,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return ret;
     }
+    // TODO: ojalgo
     // Converts an array/matrix into a DenseMatrix (double[])
     private DenseMatrix toDenseMatrix(double[] input) {
         // Finding the size of the array
@@ -1603,6 +1649,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
+    // TODO: ojalgo
     // Gets the even index values from an array
     private DenseMatrix getEvenValues(DenseMatrix array) {
         DenseMatrix ret;
@@ -1624,6 +1671,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return ret;
     }
+    // TODO: ojalgo
     // Gets the odd index values from an array
     private DenseMatrix getOddValues(DenseMatrix array) {
         DenseMatrix ret;
@@ -1646,6 +1694,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
+    // TODO: ojalgo
     //Get the mean of the matrix
     private double getMean (DenseMatrix array, int size) {
         DenseMatrix temp = getValuesInRange(array,0, size);
@@ -1655,6 +1704,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return temp.meanOverCols().getValues()[0];
     }
 
+    // TODO: ojalgo
     // Performs element wise addition
     private DenseMatrixComplex addComplexMatrix(DenseMatrixComplex arr1,
                                                      DenseMatrixComplex arr2) {
@@ -1663,6 +1713,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return new DenseMatrixComplex(real, imag);
     }
+    // TODO: ojalgo
     // Perform element wise subtraction
     private DenseMatrixComplex subComplexMatrix(DenseMatrixComplex arr1,
                                                 DenseMatrixComplex arr2) {
@@ -1671,6 +1722,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return new DenseMatrixComplex(real, imag);
     }
+    // TODO: ojalgo
     // Perform element wise multiplication
     private DenseMatrixComplex mulComplexMatrix(DenseMatrixComplex arr1,
                                                      DenseMatrixComplex arr2) {
@@ -1697,12 +1749,14 @@ public class ScrollingActivity extends AppCompatActivity {
                 (real1.mul(real2).add(imag1.mul(imag2))));
 
     }
+    // TODO: ojalgo
     // Perform element-wise division
     private DenseMatrixComplex divComplexMatrix(DenseMatrixComplex array, double scalar) {
         DenseMatrix real = array.real().div(scalar);
         DenseMatrix imag = array.imag().div(scalar);
         return new DenseMatrixComplex(real, imag);
     }
+    // TODO: ojalgo
     // Perform element-wise tanh
     private DenseMatrix arctanArray(DenseMatrix array) {
         DenseMatrix ret = new DenseMatrix(array.rows, array.cols);

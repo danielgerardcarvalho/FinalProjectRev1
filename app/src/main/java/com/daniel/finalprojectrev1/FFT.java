@@ -50,6 +50,7 @@ public class FFT {
         solution_imag = new double[this.size];
     }
 
+    // TODO: ojalgo
     public ArrayList<double[]> fft(double [] data_real){
 
         // Bit reversal
@@ -102,6 +103,7 @@ public class FFT {
     }
 
     /* Helpers and Gets */
+    // TODO: ojalgo
     public ArrayList<double[]> getFFT(){
         ArrayList<double[]> ret = new ArrayList<double[]>();
         ret.add(solution_real);
@@ -109,10 +111,12 @@ public class FFT {
         return ret;
     }
 
+    // TODO: ojalgo
     public double[] getFFTReal(){
         return solution_real;
     }
 
+    // TODO: ojalgo
     public double[] getFFTImag(){
         return solution_imag;
     }
