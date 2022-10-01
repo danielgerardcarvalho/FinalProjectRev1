@@ -50,6 +50,7 @@ import java.util.ArrayList;
 
 import jeigen.DenseMatrix;
 import jeigen.DenseMatrixComplex;
+import jeigen.SparseMatrixLil;
 
 public class ScrollingActivity extends AppCompatActivity {
 
@@ -77,7 +78,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     private static final int AUDIO_MIN_FORMAT_SIZE = 1;
-    private final int CAP_QUEUE_SIZE = 2;
+    private final int CAP_QUEUE_SIZE = 10;
     // input format options
     private static final String UI_AUDIO_FORMAT_INT16 = "int16";
     private static final String UI_AUDIO_FORMAT_FLOAT = "float";
@@ -93,7 +94,7 @@ public class ScrollingActivity extends AppCompatActivity {
     /* Audio Pre-Processing */
     // processing constants
     private final int HANN = 0;
-    private final int PROC_QUEUE_SIZE = 2;
+    private final int PROC_QUEUE_SIZE = 10;
     // processing multi-threading
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
@@ -102,12 +103,13 @@ public class ScrollingActivity extends AppCompatActivity {
 
     /* Classifier */
     // classifier constants
-    private final int DETECT_QUEUE_SIZE = 2;
+    private final int DETECT_QUEUE_SIZE = 5;
     // classifier multi-thread
-    private Runnable mt_classifier_runnable;
-    private boolean mt_classifier_flag;
-    private DenseMatrix classifier_data;
-    private ArrayList<DenseMatrix> classifier_buffer;
+    private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
+    private boolean mt_classifier_flag;                 // multi-thread status flag
+    private NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
+    private DenseMatrix classifier_data;                // classifier input
+    private ArrayList<DenseMatrix> classifier_buffer;   // classifier output buffer
 
 
     /* UI Associated Model Import Settings */
@@ -317,10 +319,10 @@ public class ScrollingActivity extends AppCompatActivity {
 //                configureMonitor();
 
 
-                // Starting the sub-systems
+                // Starting the sub-system threads
                 startCapture();
                 startProcessing();
-//                startClassifier();
+                startClassifier();
 
                 // Display results
 //                tempTestPlot(image);
@@ -718,7 +720,6 @@ public class ScrollingActivity extends AppCompatActivity {
         classifier_num_iters_input.setText(String.format("%d", classifier_num_iters));
     }
 
-
     private void configureRunnables(){
 
         // Audio Capture Runnable
@@ -752,6 +753,8 @@ public class ScrollingActivity extends AppCompatActivity {
         mt_classifier_runnable = () -> {
             // Read data from the processing buffer and delete
             Log.v("Classifier", "Classifier thread is starting...");
+            // The infinite while loop in in classifier
+            classifier();
             Log.v("Classifier", "Classifier thread has been closed.");
         };
     }
@@ -825,6 +828,8 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Capture
     private void configureCapture() {
+        /* Configures capture variables before the start of any sub-systems*/
+
         // Reset first run flag
         cap_first_run = true;
         // Minimum buffer size
@@ -882,6 +887,8 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void startCapture(){
+        /* Finalises configuration and starts sub-system */
+
         // Set activity flag to true - as the system is starting
         mt_audio_capture_flag = true;
 
@@ -953,12 +960,11 @@ public class ScrollingActivity extends AppCompatActivity {
             cap_first_run = false;
         }
         // Override garbage read with real read of AudioRecord buffer
-        int num_read = 0;
-        num_read = audio_recorder.read(temp, 0, cap_buffer_size);
+        int num_read = audio_recorder.read(temp, 0, cap_buffer_size);
 
         // Add read data to capture buffer
         cap_buffer.add(temp);
-        Log.d("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
+        Log.v("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
                 "\n\tQueue location:%d", num_read, cap_buffer.size()));
     }
 
@@ -996,15 +1002,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Processing
     private void configureProcessing() {
-        // TODO: THIS IS THE CURRENT PART YOU ARE WORKING ON
-        // TODO: Need to setup the processing subsystem.
-        //  this includes the:
-        //  - processing user input stored in the capture buffer
-        //  - so reading data from the buffer (its a queue)
-        //  - processing the data through the various stages
-        //  - creating a spectrogram of the data
-        //  - outputting the spectrogram - THIS IS FOR TESTING, will maybe be in final but not sure
-        //  - REMEMBER THIS METHOD IS FOR CONFIGURATION ONLY - maybe creation of secondary thread?.
+        /* Configures processing variables before the start of any sub-systems*/
 
         // Input variable initialisation
         proc_data = null;
@@ -1013,15 +1011,16 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void startProcessing(){
+        /* Finalises configuration and starts sub-system */
+
         // Set the activity flag to true as sub-system is starting
         mt_audio_processing_flag = true;
-
         // Start pre-processing thread
         new Thread(mt_audio_processing_runnable).start();
     }
 
     private void stopProcessing(){
-        // Starting pre-processing thread
+        // Stopping pre-processing thread
         mt_audio_processing_flag = false;
     }
 
@@ -1050,6 +1049,7 @@ public class ScrollingActivity extends AppCompatActivity {
             // Wait if no value is available in the buffer
             while (cap_buffer == null || cap_buffer.size() == 0){
                 try {
+                    Log.v("AudioProcessing", "waiting for capture buffer to fill...");
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -1062,7 +1062,10 @@ public class ScrollingActivity extends AppCompatActivity {
             byte[] temp = cap_buffer.remove(0);
             // Converting from bytes to short
             proc_data = bytesToShort(temp, cap_format);
-            Log.d("BufferSize", String.format("%d -> %d", cap_buffer_size, proc_data.length));
+            Log.v("AudioProcessing", String.format("Conversion from Bytes:" +
+                    "\n\tInput from buffer: %d" +
+                    "\n\tOutput from byte conversion: %d", cap_buffer_size, proc_data.length));
+
             // Perform STFT
             // TODO: (MEL) removed in mean-time
             proc_buffer.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
@@ -1126,15 +1129,16 @@ public class ScrollingActivity extends AppCompatActivity {
         double reference = real_spec_window.
                 minOverRows().minOverCols().getValues()[0];
 
-        Log.v("input values", String.format(
-                "\n\tFFT size (rows):%d" +
-                "\n\tNum frames (cols):%d", proc_fft_size, proc_num_time_frames));
-        Log.v("output values", String.format(
-                "\n\tFFT size (rows):%d" +
-                "\n\tNum frames (cols):%d", real_spec_window.rows, real_spec_window.cols));
-        Log.v("parameters", String.format(
-                "\n\tFFT size/2: %d" +
-                "\n\tCalculated num windows: %d", proc_fft_size/2, num_windows));
+        Log.v("AudioProcessing", String.format("STFT Summary:" +
+                        "\n\tinput fft size (rows):\t\t%d" +
+                        "\n\tinput num frames (cols):\t%d" +
+                        "\n\toutput fft size (rows):\t\t%d" +
+                        "\n\toutput num frames (cols):\t%d" +
+                        "\nPre-calculated output sizes" +
+                        "\n\tfft size (proc_fft_size/2):\t%d" +
+                        "\n\tnum windows (calculated):\t%d", proc_fft_size, proc_num_time_frames,
+                real_spec_window.rows, real_spec_window.cols, proc_fft_size/2, num_windows));
+
         return ampToDB(real_spec_window, reference);
     }
 
@@ -1178,7 +1182,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
 //        int mel_scale_spectrum_iter = 0;
         // TODO: change this to arraylist as well
-        ArrayList<Double> mel_scale_spectrum = new ArrayList<Double>();
+        ArrayList<Double> mel_scale_spectrum = new ArrayList<>();
 //        DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
 
         while (freq_count < (int) (proc_fft_size/2)) {
@@ -1216,26 +1220,57 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
+
     // Classifier
     private void configureClassifier(TextView model_filename_view,
                                      ImageView model_filename_marker_view) {
+        /* Configures classifier variables before the start of any sub-systems*/
 
         // Importing model file
-        NMF.NMF_Mini temp_nmf_mini;
+        classifier_imported_nmf_model = null;
         if (isValidModelFilename(model_filename_view, model_filename_marker_view)) {
-             temp_nmf_mini = importModelFile(model_filename_view.getText().toString());
+            classifier_imported_nmf_model=importModelFile(model_filename_view.getText().toString());
         }
+        if (classifier_imported_nmf_model == null) {
+            Log.e("Classifier", "The import failed somewhere, the returned object is null");
+            // TODO: Handle failures better, maybe inform user and revert to default values?
+            return;
+        }
+        Log.v("Classifier", String.format("Imported values:" +
+                        "\n\tW1 (shape): (%d,%d)\n\tW2 (shape): (%d, %d)\n\tW1 example value: %f" +
+                        "\n\tW2 example value: %f",
+                classifier_imported_nmf_model.W1.length, classifier_imported_nmf_model.W1[0].length,
+                classifier_imported_nmf_model.W2.length, classifier_imported_nmf_model.W2[0].length,
+                classifier_imported_nmf_model.W1[0][0], classifier_imported_nmf_model.W2[0][0]));
 
-        // TODO: implement the configuration of the Classifier stage
-        // Input variable initialisation
+        // Input variable clearing / initialisation
         classifier_data = null;
         // Buffer clearing / initialisation
         classifier_buffer = new ArrayList<>();
+    }
+
+    private void startClassifier() {
+        /* Finalises configuration and starts sub-system */
+
+        // Set the activity flag to true as sub-system is starting
+        mt_classifier_flag = true;
+        // Start pre-processing thread
+        new Thread(mt_classifier_runnable).start();
+    }
+
+    private void stopClassifier() {
+        // Stopping classifier thread
+        mt_classifier_flag = false;
+    }
+
+    private void classifier() {
+        // TODO: basic configuration before starting the loop
+
         // Calculating number of time frames
         int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
-                          (int) Math.ceil(proc_window_time * proc_sample_rate)) /
-                          (int) Math.ceil(proc_hop_time * proc_sample_rate))+1;
-        // Configuring NMF class
+                (int) Math.ceil(proc_window_time * proc_sample_rate)) /
+                (int) Math.ceil(proc_hop_time * proc_sample_rate))+1;
+        // Initialising the NMF class
         NMF nmf = new NMF(
                 classifier_fft_size,
                 num_windows,
@@ -1243,32 +1278,39 @@ public class ScrollingActivity extends AppCompatActivity {
                 classifier_num_inter_comp,
                 classifier_num_iters
         );
+        // Loading Dictionaries
+        Log.v("Classifier", "Loading imported model dictionaries...");
+        nmf.loadW1(classifier_imported_nmf_model.W1);
+        nmf.loadW2(classifier_imported_nmf_model.W2);
+        nmf.loadTrainingError(classifier_imported_nmf_model.training_cost);
 
-
-
-        // Fetch STFT output
-
-
-        // possible filtering
-        // NMF
-        // - configuring the NMF class
-        //  - the number of components
-        //  - the construction of the W1 and W2 matrices
-        //  - setting the number of iterations
-        //  - setting the error and optimisation technique
-        // binarisation
-        // - setting the method of binarisation
-        // possible refinement
+        while(mt_classifier_flag) {
+            Log.v("Classifier", "Classifier thread is active...");
+            // Reading data from the processing buffer queue
+            while (proc_buffer == null || proc_buffer.size() == 0) {
+                try {
+                    Log.v("Classifier", "waiting for processing buffer to fill...");
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (!mt_classifier_flag) {
+                    return;
+                }
+            }
+            classifier_data = proc_buffer.remove(0);
+            // Loading the data into the nmf class object
+            nmf.loadV1(classifier_data);
+            // Starting nmf calculation
+            nmf.start();
+            nmf.stop();
+            // Retrieving results from nmf class object
+            // TODO: classifier: implement results reception
+            // Adding results to classifier buffer
+            // TODO: classifier: implement buffer addition
+//            classifier_buffer.add()
+        }
     }
-
-    private void startClassifier() {
-        // TODO: implement the startClassifier method
-    }
-
-    private void stopClassifier() {
-        // TODO: implement the stopClassifier method
-    }
-
 
     // Result display
     private void tempTestPlot(ImageView image){
@@ -1308,10 +1350,7 @@ public class ScrollingActivity extends AppCompatActivity {
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempCapPlot(ImageView image){
-        while (proc_data == null){
-            int i = 0;
-
-        }
+        while (proc_data == null){}
         int width = Math.min(proc_data.length, 22050);
         int height = 900;
         int max = 0;
@@ -1325,7 +1364,7 @@ public class ScrollingActivity extends AppCompatActivity {
         int iter = (int)(-height/2.0);
         for (int i = 0; i < height; i++){
             for (int j = 0; j < width; j++){
-                if ((Math.abs(proc_data[j]/(1.0*max))*(height/2)) >= Math.abs(iter)){
+                if ((Math.abs(proc_data[j]/(1.0*max))*(height/2.0)) >= Math.abs(iter)){
                     temp.set(i,j,1);
                 } else {
                     temp.set(i, j, 0);
@@ -1654,11 +1693,9 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        return new DenseMatrixComplex(ret_real, ret_imag);
 
-        DenseMatrixComplex ret = new DenseMatrixComplex(
-                (real1.mul(real2).sub(imag1.mul(imag2))),
-                (real1.mul(real2).add(imag1.mul(imag2)))
-        );
-        return ret;
+        return new DenseMatrixComplex((real1.mul(real2).sub(imag1.mul(imag2))),
+                (real1.mul(real2).add(imag1.mul(imag2))));
+
     }
     // Perform element-wise division
     private DenseMatrixComplex divComplexMatrix(DenseMatrixComplex array, double scalar) {

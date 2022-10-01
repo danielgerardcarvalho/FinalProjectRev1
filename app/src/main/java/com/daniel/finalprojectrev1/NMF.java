@@ -1,5 +1,7 @@
 package com.daniel.finalprojectrev1;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 
 import jeigen.DenseMatrix;
@@ -42,6 +44,9 @@ public class NMF {
     // max number of optimisation iterations
     private int iter_limit;
 
+    // operation flag
+    private boolean operation_flag;
+
     public NMF(int f, int n, int e, int k, int iter_limit){
         // Initialising the configuration settings
         this.f = f;
@@ -56,14 +61,61 @@ public class NMF {
         initW();
         // Constructing the coefficient matrix H
         initH();
-//        // Initialising the cost array
+        // Initialising the cost array
         this.error = new ArrayList<>();
+        // Setting the operation flag to false
+        this.operation_flag = false;
     }
 
+    /* Control methods */
+    public void start() {
+        // TODO: nmf: start the classifier nmf calc
+        // Starts the classes operations
+        this.operation_flag = true;
+        run();
+    }
 
-    /* Computation methods */
+    public void stop() {
+        // TODO: nmf: stop the classifier nmf calc
+        // Stops the classes operations
+        this.operation_flag = false;
+    }
+
+    public void clear() {
+        // Clearing all major class variables
+        this.V1 = null;
+        this.V2 = null;
+        this.W1 = null;
+        this.W2 = null;
+        this.H = null;
+        this.error = null;
+        this.operation_flag = false;
+    }
+
+    /* Primary methods */
     // TODO: implement - high
-    private void run() {}
+    private void run() {
+        // TODO: could initialise several H matrices and use one that achieves best results
+        //  or average the results between them. Will this really help? obviouse computation and
+        //  storage burden. Maybe different binarisations. Don't need multiple runs for that!
+        // Re-initialise the H matrix
+        initH();
+        // Creating operation variables
+        int curr_iter_num = 0;
+        double min_const = Math.pow(1.0 * 10, -30);
+        // Starting the computation loop
+        // TODO: add error thresholding
+        while (curr_iter_num < this.iter_limit) {
+            // Update the matrices
+            // Calculate the error
+            // Progress display, giving error and current iteration number and total iterations
+            if (curr_iter_num % 10 == 0){
+                Log.v("ClassifierNMF", String.format("Iteration: %d / %d, error: %f",
+                        curr_iter_num, this.iter_limit, this.error.get(this.error.size()-1)));
+            }
+        }
+
+    }
 
     // TODO: implement - high
     private void update() {}
@@ -88,23 +140,24 @@ public class NMF {
     private void loadV1(double [][] data) {}
 
     // TODO: implement - high
-    private void loadV1(DenseMatrix data) {}
+    public void loadV1(DenseMatrix data) {
+        this.V1 = toSparseMatrixLil(data);
+    }
 
     // TODO: implement - low
     private void loadV1(SparseMatrixLil data) {}
 
-    // TODO:implement - high
-    public void loadW1() {}
-
-    // TODO: implement - high
-    public void loadW2() {}
-
-    // TODO: implememnt - high
-    public void loadModel(NMF temp_obj) {
-        this.W1 = temp_obj.W1;
-        this.W2 = temp_obj.W2;
+    public void loadW1(double [][] data) {
+        this.W1 = toSparseMatrixLil(new DenseMatrix(data));
     }
 
+    public void loadW2(double [][] data) {
+        this.W2 = toSparseMatrixLil(new DenseMatrix(data));
+    }
+
+    public void loadTrainingError(double training_error){
+        this.final_training_error = training_error;
+    }
 
     /* Get methods */
     public SparseMatrixLil getV1(){
@@ -122,4 +175,33 @@ public class NMF {
     public SparseMatrixLil getH(){
         return this.H;
     }
+
+    /* Helpers */
+    public SparseMatrixLil toSparseMatrixLil(DenseMatrix temp) {
+        SparseMatrixLil result = new SparseMatrixLil(temp.rows, temp.cols);
+        int notZero = 0;
+        int count = temp.rows * temp.cols;
+
+        int c;
+        for(c = 0; c < count; ++c) {
+            if (temp.getValues()[c] != 0.0D) {
+                ++notZero;
+            }
+        }
+
+        result.reserve(notZero);
+
+        for(c = 0; c < temp.cols; ++c) {
+            for(int r = 0; r < temp.rows; ++r) {
+                double value = temp.getValues()[temp.rows * c + r];
+                if (value != 0.0D) {
+                    result.append(r, c, value);
+                }
+            }
+        }
+
+        return result;
+    }
+
 }
+
