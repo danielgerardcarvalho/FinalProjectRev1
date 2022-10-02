@@ -3,33 +3,27 @@ package com.daniel.finalprojectrev1;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Path;
-import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 
-import jeigen.DenseMatrix;
-import jeigen.Shortcuts.*;
-
-import java.util.Random;
+import org.ojalgo.matrix.store.Primitive64Store;
 
 public class SpectrogramView extends View {
     public Paint paint = new Paint();
     public Bitmap bmp;
     private int [] shape;
 
-    public SpectrogramView(Context context, DenseMatrix data, int source_width) {
+    public SpectrogramView(Context context, Primitive64Store data, int source_width) {
         super(context);
         constructBitMap(data, source_width);
     }
 
-    private void constructBitMap(DenseMatrix data, int source_width){
+    private void constructBitMap(Primitive64Store data, int source_width){
         if (data != null) {
             paint.setStrokeWidth(1);
-            int rows = data.rows;
-            int cols = data.cols;
+            // TODO: ojalgo CHECK see that countRows and countColumns does what you think
+            int rows = (int) data.countRows();
+            int cols = (int) data.countColumns();
 
             int[] arrayCol = new int[rows * cols];
             int counter = 0;

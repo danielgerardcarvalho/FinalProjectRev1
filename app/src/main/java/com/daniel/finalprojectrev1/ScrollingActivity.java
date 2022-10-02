@@ -38,6 +38,7 @@ import com.google.gson.Gson;
 
 import org.ojalgo.matrix.ComplexMatrix;
 import org.ojalgo.matrix.Primitive64Matrix;
+import org.ojalgo.matrix.store.MatrixStore;
 import org.ojalgo.matrix.store.PhysicalStore;
 import org.ojalgo.matrix.store.Primitive64Store;
 import org.ojalgo.structure.Access2D;
@@ -104,7 +105,8 @@ public class ScrollingActivity extends AppCompatActivity {
     private boolean mt_audio_processing_flag;
     private short [] proc_data;
     // TODO: ojalgo NEEDS CONVERT - STFT output buffer (Normal large matrix)
-    private ArrayList<DenseMatrix> proc_buffer;
+    private ArrayList<Primitive64Store> proc_buffer;
+//    private ArrayList<DenseMatrix> proc_buffer;
 
     /* Classifier */
     // classifier constants
@@ -113,8 +115,8 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
     private boolean mt_classifier_flag;                 // multi-thread status flag
     private NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
-    private DenseMatrix classifier_data;                // classifier input
-    private ArrayList<DenseMatrix> classifier_buffer;   // classifier output buffer
+    private Primitive64Store classifier_data;                // classifier input
+    private ArrayList<Primitive64Store> classifier_buffer;   // classifier output buffer
 
 
     /* UI Associated Model Import Settings */
@@ -319,7 +321,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Configure processing system
                 configureProcessing();
                 // Configure classifier system
-                configureClassifier(model_filename_view, model_filename_marker_view);
+//                configureClassifier(model_filename_view, model_filename_marker_view);
 //                // Configure monitoring system
 //                configureMonitor();
 
@@ -327,12 +329,15 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Starting the sub-system threads
                 startCapture();
                 startProcessing();
-                startClassifier();
+//                startClassifier();
 
                 // Display results
 //                tempTestPlot(image);
-//                tempProcPlot(image);
-                tempCapPlot(image);
+//                tempCapPlot(image);
+                tempProcPlot(image);
+//                tempClassifierPlot(image);
+
+
 
                 system_flag = true;
             }
@@ -807,7 +812,6 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Import
-    // TODO: ojalgo
     private NMF.NMF_Mini importModelFile(String filename) {
         Log.v("ImportModelFile", "Attempting to import model file...");
         Log.v("ImportModelFile", "File path: " + MODEL_DIR_LOC + filename + MODEL_FILE_EXT);
@@ -1007,18 +1011,15 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Processing
-    // TODO: ojalgo
     private void configureProcessing() {
         /* Configures processing variables before the start of any sub-systems*/
 
         // Input variable initialisation
         proc_data = null;
         // Output buffer clearing / initialisation
-        // TODO: ojalgo - NEEDS CONVERT
         proc_buffer = new ArrayList<>();
     }
 
-    // TODO: ojalgo
     private void startProcessing(){
         /* Finalises configuration and starts sub-system */
 
@@ -1028,13 +1029,11 @@ public class ScrollingActivity extends AppCompatActivity {
         new Thread(mt_audio_processing_runnable).start();
     }
 
-    // TODO: ojalgo
     private void stopProcessing(){
         // Stopping pre-processing thread
         mt_audio_processing_flag = false;
     }
 
-    // TODO: ojalgo
     private void preProcessing(){
         // Finding window size
         int window_size = (int) Math.ceil(proc_window_time * proc_sample_rate);
@@ -1098,17 +1097,15 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
-    // TODO: ojalgo NEEDS CONVERT - multiple internal uses including complex values and outputs a DenseMatrix, try and have output be a matrix of some form
+    // TODO: ojalgo: CHECK - certain function calls may not do what you think, .size() .multiply, especially between Matrices and Matrices
     // TODO: (MEL) removed in mean-time.
-    private DenseMatrix stft(double[] data, int window_size, int hop_size, int num_windows,
+    private Primitive64Store stft(double[] data, int window_size, int hop_size, int num_windows,
                              double[] window_coeff, FFT fft/*, DenseMatrix frequency_range,
                              DenseMatrix melscale_range*/) {
         double [] window;
         double [] spec_window_real;
         double [] spec_window_imag;
         double [][] temp_spectrogram = new double[num_windows][proc_fft_size/2];
-        // TODO: NEEDS CONVERSION ojalgo - Real Matrix that serves as input for NMF, needs to be some sort of matrix.
-        DenseMatrix real_spec_window = new DenseMatrix(num_windows, proc_fft_size/2);
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
 
@@ -1123,7 +1120,7 @@ public class ScrollingActivity extends AppCompatActivity {
             // Finding absolute values of complex matrix, scaling
             double [] temp_real_spec_window = abs(spec_window_real, spec_window_imag);
             // Adding the window to the spectrogram
-            for (int j = 0; j < real_spec_window.cols; j++) {
+            for (int j = 0; j < proc_fft_size/2; j++) {
                 temp_spectrogram[i][j] = temp_real_spec_window[j];
             }
             // TODO: (MEL) removed in mean-time - NEEDS CONVERSION IF IMPLEMENTED AGAIN ojalgo
@@ -1137,12 +1134,11 @@ public class ScrollingActivity extends AppCompatActivity {
 //            }
         }
         Primitive64Store spectrogram = createMatrix(temp_spectrogram);
-        temp_spectrogram = null;
+//        temp_spectrogram = null;
         // Transposing the spectrogram to correct orientation
-        spectrogram = pow((Primitive64Store) spectrogram.transpose(), 2);
+        spectrogram = pow(Primitive64Store.FACTORY.transpose(spectrogram), 2);
         // Normalising the spectrogram as well as converting to dB
         double reference = min(spectrogram);
-                minOverRows().minOverCols().getValues()[0];
 
         Log.v("AudioProcessing", String.format("STFT Summary:" +
                         "\n\tinput fft size (rows):\t\t%d" +
@@ -1152,41 +1148,40 @@ public class ScrollingActivity extends AppCompatActivity {
                         "\nPre-calculated output sizes" +
                         "\n\tfft size (proc_fft_size/2):\t%d" +
                         "\n\tnum windows (calculated):\t%d", proc_fft_size, proc_num_time_frames,
-                real_spec_window.rows, real_spec_window.cols, proc_fft_size/2, num_windows));
+                spectrogram.countRows(), spectrogram.countColumns(), proc_fft_size/2, num_windows));
 
-        return ampToDB(real_spec_window, reference);
+        return ampToDb(spectrogram, reference);
     }
 
-    // TODO: ojalgo
-    // TODO: currently this fft method in not used (Deprecated for use of FFT class)
-    private DenseMatrixComplex fft(DenseMatrix data) {
-        int size = data.getValues().length;
-        if (size == 2) {
-            DenseMatrix temp = toDenseMatrix(new double []{data.getValues()[0] + data.getValues()[1], data.getValues()[0] - data.getValues()[1]});
-            return new DenseMatrixComplex(temp, DenseMatrix.zeros(temp.rows, 1));
-        } else {
-            DenseMatrixComplex data_even = fft(getEvenValues(data));
-            DenseMatrixComplex data_odd = fft(getOddValues(data));
+    // TODO: currently this fft method in not used (Deprecated for use of FFT class) - NEEDS CONVERSION IF USED AGAIN, ojalgo
+//    private DenseMatrixComplex fft(DenseMatrix data) {
+//        int size = data.getValues().length;
+//        if (size == 2) {
+//            DenseMatrix temp = toDenseMatrix(new double []{data.getValues()[0] + data.getValues()[1], data.getValues()[0] - data.getValues()[1]});
+//            return new DenseMatrixComplex(temp, DenseMatrix.zeros(temp.rows, 1));
+//        } else {
+//            DenseMatrixComplex data_even = fft(getEvenValues(data));
+//            DenseMatrixComplex data_odd = fft(getOddValues(data));
+//
+//            DenseMatrix factor_real = new DenseMatrix(size, 1);
+//            DenseMatrix factor_imag = new DenseMatrix(size, 1);
+//
+//            for (int i = 0; i < size; i++){
+//                double theta = -2 * Math.PI * i / size;
+//                factor_real.set(i, Math.cos(theta));
+//                factor_imag.set(i, Math.sin(theta));
+//            }
+//            DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
+//
+//            DenseMatrixComplex ret1 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd));
+//            DenseMatrixComplex ret2 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
+//
+//            return concatComplexMatrix(ret1, ret2, 0);
+//        }
+//    }
 
-            DenseMatrix factor_real = new DenseMatrix(size, 1);
-            DenseMatrix factor_imag = new DenseMatrix(size, 1);
 
-            for (int i = 0; i < size; i++){
-                double theta = -2 * Math.PI * i / size;
-                factor_real.set(i, Math.cos(theta));
-                factor_imag.set(i, Math.sin(theta));
-            }
-            DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
-
-            DenseMatrixComplex ret1 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd));
-            DenseMatrixComplex ret2 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
-
-            return concatComplexMatrix(ret1, ret2, 0);
-        }
-    }
-
-    // TODO: ojalgo
-    // TODO: currently this mel conversion method is not used (Deprecated as mel scale is not used)
+    // TODO: currently this mel conversion method is not used (Deprecated as mel scale is not used), NEEDS CONVERSION IF USED AGAIN, ojalgo
     // Converts frequency spectrum to melscale
     private double[] specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
         int freq_count = 0;
@@ -1239,7 +1234,6 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Classifier
-    // TODO: ojalgo
     private void configureClassifier(TextView model_filename_view,
                                      ImageView model_filename_marker_view) {
         /* Configures classifier variables before the start of any sub-systems*/
@@ -1267,26 +1261,20 @@ public class ScrollingActivity extends AppCompatActivity {
         classifier_buffer = new ArrayList<>();
     }
 
-    // TODO: ojalgo
     private void startClassifier() {
         /* Finalises configuration and starts sub-system */
-
         // Set the activity flag to true as sub-system is starting
         mt_classifier_flag = true;
         // Start pre-processing thread
         new Thread(mt_classifier_runnable).start();
     }
 
-    // TODO: ojalgo
     private void stopClassifier() {
         // Stopping classifier thread
         mt_classifier_flag = false;
     }
 
-    // TODO: ojalgo
     private void classifier() {
-        // TODO: basic configuration before starting the loop
-
         // Calculating number of time frames
         int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
                 (int) Math.ceil(proc_window_time * proc_sample_rate)) /
@@ -1319,14 +1307,13 @@ public class ScrollingActivity extends AppCompatActivity {
                     return;
                 }
             }
-            classifier_data = proc_buffer.remove(0);
+//            classifier_data = proc_buffer.remove(0);
             // Loading the data into the nmf class object
-            nmf.loadV1(classifier_data);
+//            nmf.loadV1(classifier_data);
             // Starting nmf calculation
-            nmf.start();
+//            nmf.start();
             // Retrieving results from nmf class object
-            // TODO: classifier: implement results reception
-            classifier_buffer.add(nmf.getW2().toDense());
+//            classifier_buffer.add(nmf.getW2());
             // Adding results to classifier buffer
             // TODO: classifier: implement buffer addition
 //            classifier_buffer.add()
@@ -1334,19 +1321,20 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Result display
-    // TODO: ojalgo
     private void tempTestPlot(ImageView image){
         // Setting the matrix size
         int num_freq_bins = 128;
         int num_time_frames = 500;
         // Creating the matrix
-        DenseMatrix spec_matrix = DenseMatrix.zeros(num_freq_bins, num_time_frames);
-
+        Primitive64Store spec_matrix = (Primitive64Store) Primitive64Store.FACTORY.makeZero(
+                num_freq_bins, num_time_frames);
+//        DenseMatrix spec_matrix = DenseMatrix.zeros(num_freq_bins, num_time_frames);
         spec_matrix.set(100,50,0.5);
         spec_matrix.set(100,51,1);
 
         // Normalise the matrix
-        double temp_max = 0;
+
+        double temp_max = max(spec_matrix);
         for (int i = 0; i < num_freq_bins; i++){
             for (int j = 0; j < num_time_frames; j++){
                 temp_max = Math.max(spec_matrix.get(i,j), temp_max);
@@ -1357,7 +1345,6 @@ public class ScrollingActivity extends AppCompatActivity {
         SpectrogramView sp_view_obj = new SpectrogramView(this, spec_matrix, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
-    // TODO: ojalgo
     private void tempCapPlot(ImageView image){
         while (proc_data == null){}
         int width = Math.min(proc_data.length, 22050);
@@ -1368,7 +1355,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 max = Math.abs(proc_data[i]);
         }
         // create matrix from proc_data
-        DenseMatrix temp = new DenseMatrix(height, Math.abs(width));
+        Primitive64Store temp = createMatrix(height, Math.abs(width));
 
         int iter = (int)(-height/2.0);
         for (int i = 0; i < height; i++){
@@ -1385,26 +1372,25 @@ public class ScrollingActivity extends AppCompatActivity {
         SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
-    // TODO: ojalgo
     private void tempProcPlot(ImageView image) {
         // Extract spectrogram from the proc_buffer queue
         while (proc_buffer == null || proc_buffer.size() == 0) {}
-        DenseMatrix temp = proc_buffer.remove(0);
-        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
-        for (int i = temp.rows-1; i >= 0; i--){
-            for (int j = 0; j < temp.cols; j++) {
-                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
+        Primitive64Store temp = proc_buffer.remove(0);
+        Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());
+        for (int i = (int)temp.countRows()-1; i >= 0; i--){
+            for (int j = 0; j < temp.countColumns(); j++) {
+                invert_temp.set(i,j, temp.get(temp.countRows()-(i+1),j));
             }
         }
-        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
-        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
+        Primitive64Store val = Primitive64Store.FACTORY.make(invert_temp.divide(max(invert_temp)));
+        SpectrogramView sp_view_obj = new SpectrogramView(this, val, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
-    // TODO: ojalgo
     private void tempClassifierPlot(ImageView image) {
         // Extract spectrogram from the classifier_buffer queue
         while (classifier_buffer == null || classifier_buffer.size() == 0) {}
-        DenseMatrix temp = classifier_buffer.remove(0);
+        Primitive64Store temp = classifier_buffer.remove(0);
 //        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
 //        for (int i = temp.rows-1; i >= 0; i--){
 //            for (int j = 0; j < temp.cols; j++) {
@@ -1413,7 +1399,7 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
 //        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
-        SpectrogramView sp_view_obj = new SpectrogramView(this, temp.div(temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+        SpectrogramView sp_view_obj = new SpectrogramView(this, (Primitive64Store) temp.divide(max(temp)), image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
 
@@ -1421,19 +1407,6 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     /* Helpers */
-    // TODO: ojalgo
-    // Creates a DenseMatrix, with values inbetween min (inclusive) and max (exclusive), with steps
-    // of size.
-    private DenseMatrix createArray(double min, double max, int step){
-        int size = (int) Math.ceil((max - min) / step);
-        DenseMatrix temp = new DenseMatrix(size, 1);
-
-        for (int i = 0; i < size; i++){
-            temp.set(i,(step * i) + min);
-        }
-
-        return temp;
-    }
 
     // Returns a portion of a double [], the range is inclusive to min, and exclusive to max.
     private double [] getValuesInRange(double [] array, int min, int max) {
@@ -1446,53 +1419,12 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
-    // TODO: ojalgo
-    // Converts frequency spectrum to melscale
-    private DenseMatrix specToDenseMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
-        int freq_count = 0;
-        int mel_count = 0;
-
-        int mel_temp_avg_iter = 0;
-        // TODO: Change these to array lists to improve space use and remove size quess work
-        DenseMatrix mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
-
-        int mel_scale_spectrum_iter = 0;
-        // TODO: change this to arraylist as well
-        DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
-        while (freq_count < (int) (proc_fft_size/2)) {
-            // Checking if in range
-            if (freq_range.getValues()[freq_count] <= mel_range.getValues()[mel_count]) {
-                mel_temp_avg_array.set(mel_temp_avg_iter, array.getValues()[freq_count]);
-                mel_temp_avg_iter++;
-                freq_count++;
-            } else {
-                if (mel_temp_avg_iter == 0) {
-                    mel_scale_spectrum.set(mel_scale_spectrum_iter, array.getValues()[freq_count]);
-                } else if (mel_temp_avg_iter == 1) {
-                    mel_scale_spectrum.set(mel_scale_spectrum_iter,
-                            mel_temp_avg_array.getValues()[0]);
-                    mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
-                } else {
-                    mel_scale_spectrum.set(mel_scale_spectrum_iter, getMean(mel_temp_avg_array,
-                            mel_temp_avg_iter));
-                    mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
-
-                }
-                mel_count++;
-                mel_temp_avg_iter = 0;
-                mel_scale_spectrum_iter++;
-            }
-        }
-        return mel_scale_spectrum;
-    }
-
-    // TODO: ojalgo
     // Convert from amplitude values to dB values
-    private DenseMatrix ampToDB(DenseMatrix array, double ref) {
-        return ((array.div(ref)).log()).mul(20);
+    private Primitive64Store ampToDb(Primitive64Store matrix, double ref) {
+        return  Primitive64Store.FACTORY.make(log(Primitive64Store.FACTORY.make(matrix.divide(ref)), 10).multiply(20));
     }
 
-    // Convert from byte array to short[]
+    // Convert from byte array to short []
     private short[] bytesToShort(byte[] array, int format) {
         short [] ret;
         if (format == AUDIO_FORMAT_INT8){
@@ -1526,8 +1458,7 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        return ret;
     }
-
-    // TODO: ojalgo
+    // Convert from byte array to int []
     private int[] bytesToInt(byte[] array) {
         int[] ret = new int[(int) (array.length/4)];
 
@@ -1554,105 +1485,14 @@ public class ScrollingActivity extends AppCompatActivity {
 //        return ret;
     }
 
-    // TODO: ojalgo
-    // Concatenate two DenseMatrixComplex matrices
-    private DenseMatrixComplex concatComplexMatrix(DenseMatrixComplex mat1, DenseMatrixComplex mat2,
-                                                   int axis) {
-        DenseMatrix real;
-        DenseMatrix imag;
-        // Determine which axis to concatenate upon
-        if (axis == 0){
-            real = new DenseMatrix(mat1.real().rows + mat2.real().rows, mat1.real().cols);
-            imag = new DenseMatrix(mat1.imag().rows + mat2.imag().rows, mat1.imag().cols);
-            int iter = 0;
-            for (int j = 0; j < mat1.real().cols; j++) {
-                int row_iter = 0;
-                for (int i = 0; i < mat1.real().rows + mat2.real().rows; i++) {
-                    if (i < mat1.real().rows){
-                        real.set(iter, mat1.getReal(i, j));
-                        imag.set(iter, mat1.getImag(i, j));
-                    } else {
-                        real.set(iter, mat2.getReal(row_iter, j));
-                        imag.set(iter, mat2.getImag(row_iter, j));
-                        row_iter++;
-                    }
-                    iter++;
-                }
-            }
-        } else {
-            real = new DenseMatrix(mat1.real().rows, mat1.real().cols + mat2.real().cols);
-            imag = new DenseMatrix(mat1.imag().rows, mat1.imag().cols + mat2.imag().cols);
-            int iter = 0;
-            for (int j = 0; j < mat1.real().cols + mat2.real().cols; j++) {
-                int col_iter = 0;
-                for (int i = 0; i < mat1.real().rows; i++) {
-                    if (j < mat1.real().cols){
-                        real.set(iter, mat1.getReal(i, j));
-                        imag.set(iter, mat1.getImag(i, j));
-                    } else {
-                        real.set(iter, mat2.getReal(i, col_iter));
-                        imag.set(iter, mat2.getImag(i, col_iter));
-                        col_iter++;
-                    }
-                    iter++;
-                }
-            }
-        }
-        return new DenseMatrixComplex(real, imag);
-    }
-
-    // TODO: ojalgo
-    // Converts an array/matrix into a DenseMatrix (short[])
-    private DenseMatrix toDenseMatrix(short[] input) {
-        // Finding the size of the array
-        int size = input.length;
-        // Creating the DenseMatrix
-        DenseMatrix ret = new DenseMatrix(size, 1);
-        // Filling the DenseMatrix
-        for(int i = 0; i < size; i++){
-            ret.set(i, input[i]);
-        }
-
-        return ret;
-    }
-    // TODO: ojalgo
-    // Converts an array/matrix into a DenseMatrix (int[])
-    private DenseMatrix toDenseMatrix(int[] input) {
-        // Finding the size of the array
-        int size = input.length;
-        // Creating the DenseMatrix
-        DenseMatrix ret = new DenseMatrix(size, 1);
-        // Filling the DenseMatrix
-        for(int i = 0; i < size; i++){
-            ret.set(i, input[i]);
-        }
-
-        return ret;
-    }
-    // TODO: ojalgo
-    // Converts an array/matrix into a DenseMatrix (double[])
-    private DenseMatrix toDenseMatrix(double[] input) {
-        // Finding the size of the array
-        int size = input.length;
-        // Creating the DenseMatrix
-        DenseMatrix ret = new DenseMatrix(size, 1);
-        // Filling the DenseMatrix
-        for(int i = 0; i < size; i++){
-            ret.set(i, input[i]);
-        }
-
-        return ret;
-    }
-
-    // TODO: ojalgo
     // Gets the even index values from an array
-    private DenseMatrix getEvenValues(DenseMatrix array) {
-        DenseMatrix ret;
-        int length = array.getValues().length;
+    private Primitive64Store getEvenValues(Primitive64Store array) {
+        Primitive64Store ret;
+        int length = array.size();
         if (length % 2 == 0){
-            ret = new DenseMatrix((int)(length/2), 1);
+            ret = createMatrix((int)(length/2), 1);
         } else {
-            ret = new DenseMatrix((int) Math.ceil(length/2.0), 1);
+            ret = createMatrix((int) Math.ceil(length/2.0), 1);
         }
 
 //        int iter = 0;
@@ -1660,21 +1500,20 @@ public class ScrollingActivity extends AppCompatActivity {
 //            ret.set(iter, array.get(i,0));
 //            iter++;
 //        }
-        for (int i = 0; i < array.getValues().length/2; i++){
-            ret.set(i, array.get(2*i,0));
+        for (int i = 0; i < array.size()/2; i++){
+            ret.set(i, array.get(2*i));
         }
 
         return ret;
     }
-    // TODO: ojalgo
     // Gets the odd index values from an array
-    private DenseMatrix getOddValues(DenseMatrix array) {
-        DenseMatrix ret;
-        int length = array.getValues().length;
+    private Primitive64Store getOddValues(Primitive64Store array) {
+        Primitive64Store ret;
+        int length = array.size();
         if (length % 2 == 0){
-            ret = new DenseMatrix((int)(length/2), 1);
+            ret = createMatrix((int)(length/2), 1);
         } else {
-            ret = new DenseMatrix((int) Math.floor(length/2.0), 1);
+            ret = createMatrix((int) Math.floor(length/2.0), 1);
         }
 
 //        int iter = 0;
@@ -1682,99 +1521,61 @@ public class ScrollingActivity extends AppCompatActivity {
 //                ret.set(iter, array.get(i,0));
 //                iter++;
 //        }
-        for (int i = 0; i < array.getValues().length/2; i++) {
-            ret.set(i, array.get(i*2+1, 0));
-        }
-
-        return ret;
-    }
-
-    // TODO: ojalgo
-    //Get the mean of the matrix
-    private double getMean (DenseMatrix array, int size) {
-        DenseMatrix temp = getValuesInRange(array,0, size);
-        // TODO: Check the size of the temp.meanOverCols, this should be only one value,
-        //  if it is, then extract that value from the matrix in this function and return only the
-        //  double.
-        return temp.meanOverCols().getValues()[0];
-    }
-
-    // TODO: ojalgo
-    // Performs element wise addition
-    private DenseMatrixComplex addComplexMatrix(DenseMatrixComplex arr1,
-                                                     DenseMatrixComplex arr2) {
-        DenseMatrix real = arr1.real().add(arr2.real());
-        DenseMatrix imag = arr1.imag().add(arr2.imag());
-
-        return new DenseMatrixComplex(real, imag);
-    }
-    // TODO: ojalgo
-    // Perform element wise subtraction
-    private DenseMatrixComplex subComplexMatrix(DenseMatrixComplex arr1,
-                                                DenseMatrixComplex arr2) {
-        DenseMatrix real = arr1.real().sub(arr2.real());
-        DenseMatrix imag = arr1.imag().sub(arr2.imag());
-
-        return new DenseMatrixComplex(real, imag);
-    }
-    // TODO: ojalgo
-    // Perform element wise multiplication
-    private DenseMatrixComplex mulComplexMatrix(DenseMatrixComplex arr1,
-                                                     DenseMatrixComplex arr2) {
-        DenseMatrix real1 = arr1.real();
-        DenseMatrix imag1 = arr1.imag();
-        DenseMatrix real2 = arr2.real();
-        DenseMatrix imag2 = arr2.imag();
-
-//        // Convert from rectangular form to polar and multiply
-//        DenseMatrix r = ((((real1).pow(2)).add((imag1).pow(2))).sqrt()).mul((((real2).pow(2)).add(
-//                (imag2).pow(2))).sqrt());
-//        DenseMatrix theta = (arctanArray(imag1.div(real1))).add(arctanArray(imag2.div(real2)));
-//
-//        // Convert back to rectangular form and combine
-//        DenseMatrix ret_real = new DenseMatrix(real1.rows, real1.cols);
-//        DenseMatrix ret_imag = new DenseMatrix(real1.rows, real1.cols);
-//        for (int i = 0; i < r.getValues().length; i++) {
-//            ret_real.set(i, r.getValues()[i] * Math.cos(theta.getValues()[i]));
-//            ret_imag.set(i, r.getValues()[i] * -1*Math.sin(theta.getValues()[i]));
-//        }
-//        return new DenseMatrixComplex(ret_real, ret_imag);
-
-        return new DenseMatrixComplex((real1.mul(real2).sub(imag1.mul(imag2))),
-                (real1.mul(real2).add(imag1.mul(imag2))));
-
-    }
-    // TODO: ojalgo
-    // Perform element-wise division
-    private DenseMatrixComplex divComplexMatrix(DenseMatrixComplex array, double scalar) {
-        DenseMatrix real = array.real().div(scalar);
-        DenseMatrix imag = array.imag().div(scalar);
-        return new DenseMatrixComplex(real, imag);
-    }
-    // TODO: ojalgo
-    // Perform element-wise tanh
-    private DenseMatrix arctanArray(DenseMatrix array) {
-        DenseMatrix ret = new DenseMatrix(array.rows, array.cols);
-        for (int i = 0; i < array.getValues().length; i++){
-            ret.set(i, Math.atan(array.getValues()[i]));
+        for (int i = 0; i < array.size()/2; i++) {
+            ret.set(i, array.get(i*2+1));
         }
 
         return ret;
     }
 
     // Matrices
+    // Create a matrix, filled with scalar value
+    private Primitive64Store createMatrix(long rows, long columns, double value) {
+        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
+        Primitive64Store ret = storeFactory.make(rows, columns);
+        for (int i = 0; i < ret.size(); i++){
+            ret.set(i, value);
+        }
+        return ret;
+    }
     // Create a matrix - empty, shape only
-    private Primitive64Store createMatrix(int rows, int columns) {
+    private Primitive64Store createMatrix(long rows, long columns) {
         PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
         return storeFactory.make(rows, columns);
     }
     // Create a matrix - filled, from 2D double
     private Primitive64Store createMatrix(double[][] matrix) {
-        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
-        return (Primitive64Store) storeFactory.makeWrapper(Access2D.wrap(matrix));
+        return Primitive64Store.FACTORY.rows(matrix);
+    }
+    // Creates a Primitive64Store "array", with values in-between min (inclusive) and max
+    // (exclusive), with steps of size.
+    private Primitive64Store createArray(double min, double max, int step){
+        int size = (int) Math.ceil((max - min) / step);
+        Primitive64Store temp = createMatrix(size, 1);
+        for (int i = 0; i < size; i++){
+            temp.set(i,(step * i) + min);
+        }
+        return temp;
     }
 
     // Mathematics
+    // Element-wise multiplication of matrix
+    private Primitive64Store mul(Primitive64Store matrix1, Primitive64Store matrix2){
+        // TODO: check that .size, countRows, countColumns does what you think.
+        Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
+        for (long i = 0; i < ret.size(); i++) {
+            ret.set(i, matrix1.get(i) * matrix2.get(i));
+        }
+        return ret;
+    }
+    // Element-wise divide of matrix
+    private Primitive64Store divide(Primitive64Store numerator, Primitive64Store denominator) {
+        Primitive64Store ret = createMatrix(numerator.countRows(), numerator.countColumns());
+        for (long i = 0; i < ret.size(); i++) {
+            ret.set(i, numerator.get(i) / denominator.get(i));
+        }
+        return ret;
+    }
     // Element-wise multiplication between arrays
     private double[] mul(double [] array1, double [] array2) {
         if (array1.length != array2.length){
@@ -1788,14 +1589,6 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
-    // Absolute of complex array
-    private double[] abs(double [] real, double [] imag) {
-        double [] ret = new double[real.length];
-        for(int i = 0; i < real.length; ++i) {
-            ret[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
-        }
-        return ret;
-    }
     // Element-wise power of matrix by scalar
     private Primitive64Store pow(Primitive64Store matrix, double expon) {
         // TODO: ojalgo CHECK - is the .size() the product of rows and cols
@@ -1804,12 +1597,79 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return matrix;
     }
+    // Element-wise logarithm of matrix, with base
+    private Primitive64Store log(Primitive64Store matrix, int log_base) {
+        for (long i = 0; i < matrix.size(); i++){
+            matrix.set(i, Math.log(matrix.get(i))/Math.log(log_base));
+        }
+        return matrix;
+    }
+    // Element-wise logarithm of matrix, natural log
+    private Primitive64Store log(Primitive64Store matrix) {
+        for (long i = 0; i < matrix.size(); i++){
+            matrix.set(i, Math.log(matrix.get(i)));
+        }
+        return matrix;
+    }
+
+    // Sum of matrix
+    private double sum(Primitive64Store matrix) {
+        // TODO: see that size does what you think
+        double value = 0;
+        for (int i = 0; i < matrix.size(); i++){
+            value = value + matrix.get(i);
+        }
+        return value;
+    }
+    // Mean of matrix
+    private double mean(Primitive64Store array) {
+        return sum(array)/array.size();
+    }
+    // Absolute of complex array
+    private double[] abs(double [] real, double [] imag) {
+        double [] ret = new double[real.length];
+        for(int i = 0; i < real.length; ++i) {
+            ret[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
+        }
+        return ret;
+    }
+    // Get smallest value in the matrix
+    private double min(Primitive64Store matrix) {
+        double ret = matrix.get(0);
+        for (long i = 0; i < matrix.size(); i++){
+            ret = Math.min(matrix.get(i), ret);
+        }
+        return ret;
+    }
+    // Get largest value in the matrix
+    private double max(Primitive64Store matrix) {
+        double ret = matrix.get(0);
+        for (long i = 0; i < matrix.size(); i++){
+            ret = Math.max(matrix.get(i), ret);
+        }
+        return ret;
+    }
 
     // Type converters
     private double[] toDouble(short[] input_array) {
         double[] ret = new double[input_array.length];
         for (int i = 0; i < input_array.length; i++){
             ret[i] = input_array[i];
+        }
+        return ret;
+    }
+
+    private DenseMatrix convertPD(Primitive64Store temp){
+        DenseMatrix ret = new DenseMatrix((int) temp.countRows(), (int) temp.countColumns());
+        for (int i = 0; i < temp.size(); i ++){
+            ret.set(i, temp.get(i));
+        }
+        return ret;
+    }
+    private Primitive64Store convertDP(DenseMatrix temp) {
+        Primitive64Store ret = createMatrix(temp.rows, temp.cols);
+        for (int i = 0; i < temp.getValues().length; i ++){
+            ret.set(i, temp.getValues()[i]);
         }
         return ret;
     }
