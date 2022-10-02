@@ -1106,8 +1106,9 @@ public class ScrollingActivity extends AppCompatActivity {
         double [] window;
         double [] spec_window_real;
         double [] spec_window_imag;
-        PhysicalStore.Factory<Double, Primitive64Store> spectrogramFACT = Primitive64Store.FACTORY;
-        Primitive64Store spectrogram = spectrogramFACT.make(num_windows, proc_fft_size/2);
+        // TODO: Cleanup
+        //PhysicalStore.Factory<Double, Primitive64Store> spectrogramFACT = Primitive64Store.FACTORY;
+        Primitive64Store spectrogram;// = spectrogramFACT.make(num_windows, proc_fft_size/2);
         double [][] temp_spectrogram = new double[num_windows][proc_fft_size/2];
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
@@ -1146,7 +1147,6 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        temp_spectrogram = null;
         // Transposing the spectrogram to correct orientation
-//        spectrogram = Primitive64Store.FACTORY.transpose(spectrogram);
         spectrogram = pow(Primitive64Store.FACTORY.transpose(spectrogram), 2);
         // Normalising the spectrogram as well as converting to dB
         double reference = min(spectrogram);
@@ -1385,16 +1385,19 @@ public class ScrollingActivity extends AppCompatActivity {
     }
     private void tempProcPlot(ImageView image) {
         // Extract spectrogram from the proc_buffer queue
-        while (proc_buffer == null || proc_buffer.size() <= 2) {}
-        Primitive64Store temp = proc_buffer.remove(2);
-        Primitive64Store invert_temp = Primitive64Store.FACTORY.make(temp.countRows(), temp.countColumns());// createMatrix(temp.countRows(), temp.countColumns());
+        while (proc_buffer == null || proc_buffer.size() == 0) {}
+        Primitive64Store temp = proc_buffer.remove(0);
+        Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());// createMatrix(temp.countRows(), temp.countColumns());
         for (long i = temp.countRows()-1; i >= 0; i--){
             for (long j = 0; j < temp.countColumns(); j++) {
                 invert_temp.set(i,j, temp.get(temp.countRows()-(i+1),j));
             }
         }
         Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
-        Primitive64Store val = Primitive64Store.FACTORY.make(invert_temp.divide(max(invert_temp)));
+        // TODO: cleanup
+//        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
+        Primitive64Store val = toPrimitive(invert_temp.divide(1.0+min(invert_temp)));
+        Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
         SpectrogramView sp_view_obj = new SpectrogramView(this, val, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
@@ -1432,7 +1435,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Convert from amplitude values to dB values
     private Primitive64Store ampToDb(Primitive64Store matrix, double ref) {
-        return  Primitive64Store.FACTORY.make(log(Primitive64Store.FACTORY.make(matrix.divide(ref)), 10).multiply(20));
+        return  toPrimitive(log(toPrimitive(matrix.divide(ref)), 10).multiply(20));
     }
 
     // Convert from byte array to short []
@@ -1669,7 +1672,14 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
-
+    // Converts Matrixstore to Primitive64Store
+    private Primitive64Store toPrimitive(MatrixStore matrix) {
+        Primitive64Store ret = Primitive64Store.FACTORY.make(matrix);
+        for (int i = 0; i < matrix.size(); i++) {
+            ret.set(i, matrix.get(i));
+        }
+        return ret;
+    }
     private DenseMatrix convertPD(Primitive64Store temp){
         DenseMatrix ret = new DenseMatrix((int) temp.countRows(), (int) temp.countColumns());
         for (int i = 0; i < temp.size(); i ++){
