@@ -38,6 +38,8 @@ import android.widget.TextView;
 import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
 import com.google.gson.Gson;
 
+import org.ojalgo.matrix.store.Primitive64Store;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -1710,6 +1712,21 @@ public class ScrollingActivity extends AppCompatActivity {
             ret.set(i, Math.atan(array.getValues()[i]));
         }
 
+        return ret;
+    }
+
+    private DenseMatrix convertPD(Primitive64Store temp){
+        DenseMatrix ret = new DenseMatrix((int) temp.countRows(), (int) temp.countColumns());
+        for (int i = 0; i < temp.size(); i ++){
+            ret.set(i, temp.get(i));
+        }
+        return ret;
+    }
+    private Primitive64Store convertDP(DenseMatrix temp) {
+        Primitive64Store ret = Primitive64Store.FACTORY.make(temp.rows, temp.cols);
+        for (int i = 0; i < temp.getValues().length; i ++){
+            ret.set(i, temp.getValues()[i]);
+        }
         return ret;
     }
 }
