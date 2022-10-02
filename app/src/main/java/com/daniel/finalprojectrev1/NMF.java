@@ -2,7 +2,7 @@ package com.daniel.finalprojectrev1;
 
 import android.util.Log;
 
-import org.ojalgo.matrix.store.PhysicalStore;
+import org.ojalgo.matrix.store.MatrixStore;
 import org.ojalgo.matrix.store.Primitive64Store;
 import org.ojalgo.random.Gamma;
 
@@ -29,6 +29,8 @@ public class NMF {
     private Primitive64Store W2;
     // coefficient matrix
     private Primitive64Store H;
+    // ones matrix
+    private Primitive64Store ones;
     // frequency bins
     private int f;
     // number of frames/windows
@@ -60,6 +62,7 @@ public class NMF {
         // Constructing the V1 and V2 matrices
         this.V1 = createMatrix(f, n);
         this.V2 = createMatrix(e, n);
+        this.ones = createMatrix(f, n, 1);
         // Constructing the dictionary matrices W1 and W2
         initW();
         // Constructing the coefficient matrix H
@@ -117,7 +120,7 @@ public class NMF {
         // TODO: add error thresholding
         while (curr_iter_num < this.iter_limit && operation_flag) {
             // Update the matrices
-            update();
+            update(min_const);
             // Calculate the error
             calcError();
             // Progress display, giving error and current iteration number and total iterations
@@ -135,20 +138,20 @@ public class NMF {
     }
 
     // TODO: implement - high
-    private void update() {
+    private void update(double min_const) {
         // Kullback-Leibler Multiplicative Update Rule
-        Primitive64Store V1_est = (Primitive64Store) this.W1.multiply(this.H);
-        this.H = mul(this.H,
-                divide( (Primitive64Store) (this.W1.transpose().multiply(divide(this.V1,V1_est))),
-                        (Primitive64Store) (this.W1.transpose().multiply(
-                                createMatrix(this.V1.countRows(),this.V1.countColumns(),1)))));
+        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H));
+        this.H = mul(this.H,divide( toPrimitive((this.W1.transpose().multiply(divide(this.V1,V1_est)))),
+                toPrimitive(this.W1.transpose().multiply(this.ones))));
+//                divide( toPrimitive((this.W1.transpose().multiply(divide(this.V1,toPrimitive(V1_est.add(min_const)))))),
+//                        toPrimitive(this.W1.transpose().multiply(this.ones))));
     }
 
     // TODO: implement - high
     private void calcError() {
         // TODO: see that this multiplication is matmul and not element wise
-        Primitive64Store V1_est = (Primitive64Store) this.W1.multiply(this.H);
-        error.add(sum((Primitive64Store) log(divide(V1, V1_est)).subtract(this.V1).add(V1_est)));
+        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H));
+        error.add(sum(toPrimitive(log(divide(this.V1, V1_est)).subtract(this.V1).add(V1_est))));
     }
 
     /* Data initialisation and loading methods */
@@ -203,13 +206,15 @@ public class NMF {
 
     // Create a matrix - empty, shape only
     private Primitive64Store createMatrix(long rows, long columns) {
-        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
-        return storeFactory.make(rows, columns);
+//        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
+//        return storeFactory.make(rows, columns);
+        return Primitive64Store.FACTORY.make(rows, columns);
     }
     // Create a matrix, filled with scalar value
     private Primitive64Store createMatrix(long rows, long columns, double value) {
-        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
-        Primitive64Store ret = storeFactory.make(rows, columns);
+//        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
+//        Primitive64Store ret = storeFactory.make(rows, columns);
+        Primitive64Store ret = createMatrix(rows, columns);
         for (int i = 0; i < ret.size(); i++){
             ret.set(i, value);
         }
@@ -218,6 +223,14 @@ public class NMF {
     // Create a matrix - filled, from 2D double
     private Primitive64Store createMatrix(double[][] matrix) {
         return Primitive64Store.FACTORY.rows(matrix);
+    }
+    // Convert MatrixStore to Primitive64Store
+    private Primitive64Store toPrimitive(MatrixStore matrix) {
+        Primitive64Store ret = Primitive64Store.FACTORY.make(matrix);
+        for (int i = 0; i < matrix.size(); i++) {
+            ret.set(i, matrix.get(i));
+        }
+        return ret;
     }
 
     // Element-wise logarithm of matrix, with base
@@ -244,7 +257,6 @@ public class NMF {
     }
     // Element-wise multiplication of matrix
     private Primitive64Store mul(Primitive64Store matrix1, Primitive64Store matrix2){
-        // TODO: check that .size, countRows, countColumns does what you think.
         Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
         for (long i = 0; i < ret.size(); i++) {
             ret.set(i, matrix1.get(i) * matrix2.get(i));

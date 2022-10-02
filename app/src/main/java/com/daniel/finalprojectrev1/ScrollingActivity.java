@@ -83,7 +83,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     private static final int AUDIO_MIN_FORMAT_SIZE = 1;
-    private final int CAP_QUEUE_SIZE = 10;
+    private final int CAP_QUEUE_SIZE = 2;
     // input format options
     private static final String UI_AUDIO_FORMAT_INT16 = "int16";
     private static final String UI_AUDIO_FORMAT_FLOAT = "float";
@@ -99,7 +99,7 @@ public class ScrollingActivity extends AppCompatActivity {
     /* Audio Pre-Processing */
     // processing constants
     private final int HANN = 0;
-    private final int PROC_QUEUE_SIZE = 10;
+    private final int PROC_QUEUE_SIZE = 2;
     // processing multi-threading
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
@@ -110,7 +110,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     /* Classifier */
     // classifier constants
-    private final int DETECT_QUEUE_SIZE = 5;
+    private final int DETECT_QUEUE_SIZE = 1;
     // classifier multi-thread
     private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
     private boolean mt_classifier_flag;                 // multi-thread status flag
@@ -321,7 +321,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Configure processing system
                 configureProcessing();
                 // Configure classifier system
-//                configureClassifier(model_filename_view, model_filename_marker_view);
+                configureClassifier(model_filename_view, model_filename_marker_view);
 //                // Configure monitoring system
 //                configureMonitor();
 
@@ -329,15 +329,13 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Starting the sub-system threads
                 startCapture();
                 startProcessing();
-//                startClassifier();
+                startClassifier();
 
                 // Display results
 //                tempTestPlot(image);
 //                tempCapPlot(image);
-                tempProcPlot(image);
-//                tempClassifierPlot(image);
-
-
+//                tempProcPlot(image);
+                tempClassifierPlot(image);
 
                 system_flag = true;
             }
@@ -1055,12 +1053,12 @@ public class ScrollingActivity extends AppCompatActivity {
 
         // Thread infinite loop
         while(mt_audio_processing_flag) {
-            Log.v("AudioProcessing", "Audio Pre-processing thread is active...");
+//            Log.v("AudioProcessing", "Audio Pre-processing thread is active...");
             // Wait if no value is available in the buffer
             while (cap_buffer == null || cap_buffer.size() == 0){
                 try {
                     Log.v("AudioProcessing", "waiting for capture buffer to fill...");
-                    Thread.sleep(500);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -1081,7 +1079,6 @@ public class ScrollingActivity extends AppCompatActivity {
             // TODO: (MEL) removed in mean-time
             proc_buffer.add(stft(toDouble(proc_data), window_size, hop_size, num_windows,
                     window_coeff, fft/*, frequency_range, melscale_range*/));
-            Log.v("TESTESTESTSET", String.format("%f", min(proc_buffer.get(0))));
         }
     }
 
@@ -1137,16 +1134,10 @@ public class ScrollingActivity extends AppCompatActivity {
 //                mel_window.set(j, i, temp[j]);
 //            }
         }
+        // Converting from double[][] to Primitive64Storage
         spectrogram = createMatrix(temp_spectrogram);
-//        int iter = 0;
-//        for (int j = 0; j < temp_spectrogram[0].length; j++){
-//            for (int i = 0; i < temp_spectrogram.length; i++){
-//                spectrogram.set(iter, temp_spectrogram[i][j]*temp_spectrogram[i][j]);
-//                iter++;
-//            }
-//        }
-//        temp_spectrogram = null;
         // Transposing the spectrogram to correct orientation
+//        spectrogram = Primitive64Store.FACTORY.transpose(spectrogram);
         spectrogram = pow(Primitive64Store.FACTORY.transpose(spectrogram), 2);
         // Normalising the spectrogram as well as converting to dB
         double reference = min(spectrogram);
@@ -1161,7 +1152,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         "\n\tnum windows (calculated):\t%d", proc_fft_size, proc_num_time_frames,
                 spectrogram.countRows(), spectrogram.countColumns(), proc_fft_size/2, num_windows));
 
-        return spectrogram;//ampToDb(spectrogram, reference);
+        return ampToDB(spectrogram, reference);
     }
 
     // TODO: currently this fft method in not used (Deprecated for use of FFT class) - NEEDS CONVERSION IF USED AGAIN, ojalgo
@@ -1305,12 +1296,12 @@ public class ScrollingActivity extends AppCompatActivity {
         nmf.loadTrainingError(classifier_imported_nmf_model.training_cost);
 
         while(mt_classifier_flag) {
-            Log.v("Classifier", "Classifier thread is active...");
+//            Log.v("Classifier", "Classifier thread is active...");
             // Reading data from the processing buffer queue
             while (proc_buffer == null || proc_buffer.size() == 0) {
                 try {
                     Log.v("Classifier", "waiting for processing buffer to fill...");
-                    Thread.sleep(500);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -1318,13 +1309,23 @@ public class ScrollingActivity extends AppCompatActivity {
                     return;
                 }
             }
-//            classifier_data = proc_buffer.remove(0);
+            classifier_data = proc_buffer.remove(0);
             // Loading the data into the nmf class object
-//            nmf.loadV1(classifier_data);
+            nmf.loadV1(classifier_data);
             // Starting nmf calculation
-//            nmf.start();
+            nmf.start();
             // Retrieving results from nmf class object
-//            classifier_buffer.add(nmf.getW2());
+            Primitive64Store V2_output = nmf.getV2();
+            double V2_norm = mean(V2_output);
+            // Basic thresholding implementation
+            for (int i = 0; i < V2_output.size(); i++) {
+                if (V2_norm > V2_output.get(i)){
+                    V2_output.set(i, 0);
+                } else {
+                    V2_output.set(i,1);
+                }
+            }
+            classifier_buffer.add(V2_output);
             // Adding results to classifier buffer
             // TODO: classifier: implement buffer addition
 //            classifier_buffer.add()
@@ -1396,7 +1397,7 @@ public class ScrollingActivity extends AppCompatActivity {
         Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
         // TODO: cleanup
 //        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
-        Primitive64Store val = toPrimitive(invert_temp.divide(1.0+min(invert_temp)));
+        Primitive64Store val = toPrimitive(invert_temp.divide(max(invert_temp)));
         Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
         SpectrogramView sp_view_obj = new SpectrogramView(this, val, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
@@ -1413,7 +1414,7 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
 //        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
-        SpectrogramView sp_view_obj = new SpectrogramView(this, (Primitive64Store) temp.divide(max(temp)), image.getWidth());
+        SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
 
@@ -1434,7 +1435,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Convert from amplitude values to dB values
-    private Primitive64Store ampToDb(Primitive64Store matrix, double ref) {
+    private Primitive64Store ampToDB(Primitive64Store matrix, double ref) {
         return  toPrimitive(log(toPrimitive(matrix.divide(ref)), 10).multiply(20));
     }
 
@@ -1454,6 +1455,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         ByteBuffer buffer = ByteBuffer.wrap(array);
         buffer.order(ByteOrder.nativeOrder());
+//        buffer.order(ByteOrder.BIG_ENDIAN);
         int count = 0;
         while(buffer.hasRemaining()){
             ret[count++] = buffer.getShort();
