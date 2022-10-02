@@ -10,17 +10,6 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
-
-import com.google.android.material.appbar.CollapsingToolbarLayout;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-
 import android.os.Environment;
 import android.provider.Settings;
 import android.text.Editable;
@@ -35,8 +24,19 @@ import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+
 import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
+import com.google.android.material.appbar.CollapsingToolbarLayout;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.Gson;
+
+import org.ojalgo.matrix.ComplexMatrix;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -47,10 +47,10 @@ import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import jeigen.DenseMatrix;
 import jeigen.DenseMatrixComplex;
-import jeigen.SparseMatrixLil;
 
 public class ScrollingActivity extends AppCompatActivity {
 
@@ -99,6 +99,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
     private short [] proc_data;
+    // TODO: ojalgo NEEDS CONVERT - STFT output buffer (Normal large matrix)
     private ArrayList<DenseMatrix> proc_buffer;
 
     /* Classifier */
@@ -802,6 +803,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     // Import
+    // TODO: ojalgo
     private NMF.NMF_Mini importModelFile(String filename) {
         Log.v("ImportModelFile", "Attempting to import model file...");
         Log.v("ImportModelFile", "File path: " + MODEL_DIR_LOC + filename + MODEL_FILE_EXT);
@@ -870,7 +872,6 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
-    // TODO: ojalgo
     private void getUserSelectedFile(ActivityResultLauncher<Intent> activity_launcher){
 
 //        // Old version (Deprecated by google) - working
@@ -887,7 +888,6 @@ public class ScrollingActivity extends AppCompatActivity {
         activity_launcher.launch(file_intent);
     }
 
-    // TODO: ojalgo
     private void startCapture(){
         /* Finalises configuration and starts sub-system */
 
@@ -914,7 +914,6 @@ public class ScrollingActivity extends AppCompatActivity {
         new Thread(mt_audio_capture_runnable).start();
     }
 
-    // TODO: ojalgo
     private void stopCapture(){
 
         // Stopping recording read thread
@@ -954,7 +953,6 @@ public class ScrollingActivity extends AppCompatActivity {
         audio_recorder = null;
     }
 
-    // TODO: ojalgo
     private void readAudioCaptureBuffer(){
         // Clear the input buffer with one byte read
         byte [] temp = new byte[cap_buffer_size];
@@ -972,7 +970,6 @@ public class ScrollingActivity extends AppCompatActivity {
                 "\n\tQueue location:%d", num_read, cap_buffer.size()));
     }
 
-    // TODO: ojalgo
     private void readFileCaptureBuffer(){
         // Clear first run flag
         cap_first_run = false;
@@ -1013,6 +1010,7 @@ public class ScrollingActivity extends AppCompatActivity {
         // Input variable initialisation
         proc_data = null;
         // Output buffer clearing / initialisation
+        // TODO: ojalgo - NEEDS CONVERT
         proc_buffer = new ArrayList<>();
     }
 
@@ -1042,12 +1040,12 @@ public class ScrollingActivity extends AppCompatActivity {
         int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
                 window_size) / hop_size)+1;
         //  Finding window coefficients for HANN window
-        DenseMatrix window_coeff = window_func(window_size, HANN);
+        double [] window_coeff = window_func(window_size, HANN);
         // Pre-calculating the fft twiddle factor values
         FFT fft = new FFT(proc_fft_size);
 
         // TODO: (MEL) decide fate of mel-spectrogram things, current implementation is wrong, not
-        //  sure if mel-spectrum is needed at all. (removed in mean-time)
+        //  sure if mel-spectrum is needed at all. (removed in mean-time) - WILL NEED CONVERSION ojalgo
 //        //  Finding frequency range and melscale range for conversion
 //        DenseMatrix frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
 //        DenseMatrix melscale_range = ((((frequency_range.div(1127)).exp()).sub(1)).mul(700));
@@ -1076,51 +1074,52 @@ public class ScrollingActivity extends AppCompatActivity {
                     "\n\tOutput from byte conversion: %d", cap_buffer_size, proc_data.length));
 
             // Perform STFT
+            // TODO: NEEDS CONVERT - STFT and proc_buffer both include or are jeigen types
             // TODO: (MEL) removed in mean-time
-            proc_buffer.add(stft(toDenseMatrix(proc_data), window_size, hop_size, num_windows,
+            proc_buffer.add(stft(toDouble(proc_data), window_size, hop_size, num_windows,
                     window_coeff, fft/*, frequency_range, melscale_range*/));
         }
     }
 
-    // TODO: ojalgo
-    private DenseMatrix window_func(int window_size, int window_type) {
-        DenseMatrix ret = new DenseMatrix(window_size,1);
+    private double [] window_func(int window_size, int window_type) {
+        double [] ret = new double[window_size];
 
         // Implementation of the HANN window
         if (window_type == HANN){
             for(int i = 0; i < window_size; i++){
-                ret.set(i, 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size)));
+                ret[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size));
             }
         }
 
         return ret;
     }
 
-    // TODO: ojalgo
+    // TODO: ojalgo NEEDS CONVERT - multiple internal uses including complex values and outputs a DenseMatrix, try and have output be a matrix of some form
     // TODO: (MEL) removed in mean-time.
-    private DenseMatrix stft(DenseMatrix data, int window_size, int hop_size, int num_windows,
-                             DenseMatrix window_coeff, FFT fft/*, DenseMatrix frequency_range,
+    private DenseMatrix stft(double[] data, int window_size, int hop_size, int num_windows,
+                             double[] window_coeff, FFT fft/*, DenseMatrix frequency_range,
                              DenseMatrix melscale_range*/) {
-
-        DenseMatrix window;
-        DenseMatrixComplex spec_window;
+        double [] window;
+        double [] spec_window_real;
+        double [] spec_window_imag;
+        double [] real_spec_window;
+        // TODO: NEEDS CONVERSION ojalgo
         DenseMatrix real_spec_window = new DenseMatrix(num_windows, proc_fft_size/2);
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
 
         for (int i = 0; i < num_windows; i++) {
             // Extracting window from data
-            window = getValuesInRange(data, i*hop_size, i * hop_size + window_size).mul(
-                    window_coeff);
+            window = mul(getValuesInRange(data, i*hop_size, i * hop_size + window_size), window_coeff);
             // Calculating the FFT of the window
-            fft.fft(window.getValues());
-            spec_window = new DenseMatrixComplex(toDenseMatrix(fft.getFFTReal()),
-                    toDenseMatrix(fft.getFFTImag()));
+            fft.fft(window);
             // Use only half of the FFT output
-            spec_window = getValuesInRange(spec_window, 0, proc_fft_size/2);
+            spec_window_real = getValuesInRange(fft.getFFTReal(), 0, proc_fft_size/2);
+            spec_window_imag = getValuesInRange(fft.getFFTImag(), 0, proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
-            DenseMatrix temp_real_spec_window = spec_window.abs();
+            double [] temp_real_spec_window = abs(spec_window_real, spec_window_imag);
             // Adding the window to the spectrogram
+
             for (int j = 0; j < real_spec_window.cols; j++){
                 real_spec_window.set(i, j, temp_real_spec_window.getValues()[j]);
             }
@@ -1431,23 +1430,15 @@ public class ScrollingActivity extends AppCompatActivity {
         return temp;
     }
 
-    // TODO: ojalgo
-    // Returns a portion of a DenseMatrix, the range is inclusive to min, and exclusive to max.
-    private DenseMatrix getValuesInRange(DenseMatrix array, int min, int max) {
-        DenseMatrix ret = new DenseMatrix(max - min, 1);
+    // Returns a portion of a double [], the range is inclusive to min, and exclusive to max.
+    private double [] getValuesInRange(double [] array, int min, int max) {
+        double [] ret = new double [max - min];
         int iter = 0;
         for(int i = min; i < max; i++){
-            ret.set(iter, array.get(i, 0));
+            ret[iter] = array[i];
             iter++;
         }
         return ret;
-    }
-    // TODO: ojalgo
-    // Returns a portion of a DenseMatrixComplex, the range is inclusive to min, exclusive to max.
-    private DenseMatrixComplex getValuesInRange(DenseMatrixComplex array, int min, int max){
-        DenseMatrix ret_real = getValuesInRange(array.real(), min, max);
-        DenseMatrix ret_imag = getValuesInRange(array.imag(), min, max);
-        return new DenseMatrixComplex(ret_real, ret_imag);
     }
 
     // TODO: ojalgo
@@ -1496,7 +1487,6 @@ public class ScrollingActivity extends AppCompatActivity {
         return ((array.div(ref)).log()).mul(20);
     }
 
-    // TODO: ojalgo
     // Convert from byte array to short[]
     private short[] bytesToShort(byte[] array, int format) {
         short [] ret;
@@ -1764,6 +1754,39 @@ public class ScrollingActivity extends AppCompatActivity {
             ret.set(i, Math.atan(array.getValues()[i]));
         }
 
+        return ret;
+    }
+
+
+    // Mathematics
+    // Element-wise multiplication between arrays
+    private double[] mul(double [] array1, double [] array2) {
+        if (array1.length != array2.length){
+            Log.e("mul_double[]", String.format("arrays must be of same length, array1:%d, array2:%d", array1.length, array2.length));
+            throw new ArithmeticException("array size mismatch");
+        }
+        int size = array1.length;
+        double [] ret = new double [size];
+        for (int i = 0; i < size; i++) {
+            ret[i] = array1[i] * array2[i];
+        }
+        return ret;
+    }
+    // Absolute of complex array
+    private double[] abs(double [] real, double [] imag) {
+        double [] ret = new double[real.length];
+        for(int i = 0; i < real.length; ++i) {
+            ret[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
+        }
+        return ret;
+    }
+
+    // Type converters
+    private double[] toDouble(short[] input_array) {
+        double[] ret = new double[input_array.length];
+        for (int i = 0; i < input_array.length; i++){
+            ret[i] = input_array[i];
+        }
         return ret;
     }
 }
