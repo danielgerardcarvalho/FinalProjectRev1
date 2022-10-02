@@ -37,6 +37,10 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.Gson;
 
 import org.ojalgo.matrix.ComplexMatrix;
+import org.ojalgo.matrix.Primitive64Matrix;
+import org.ojalgo.matrix.store.PhysicalStore;
+import org.ojalgo.matrix.store.Primitive64Store;
+import org.ojalgo.structure.Access2D;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -1102,8 +1106,8 @@ public class ScrollingActivity extends AppCompatActivity {
         double [] window;
         double [] spec_window_real;
         double [] spec_window_imag;
-        double [] real_spec_window;
-        // TODO: NEEDS CONVERSION ojalgo
+        double [][] temp_spectrogram = new double[num_windows][proc_fft_size/2];
+        // TODO: NEEDS CONVERSION ojalgo - Real Matrix that serves as input for NMF, needs to be some sort of matrix.
         DenseMatrix real_spec_window = new DenseMatrix(num_windows, proc_fft_size/2);
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
@@ -1119,11 +1123,10 @@ public class ScrollingActivity extends AppCompatActivity {
             // Finding absolute values of complex matrix, scaling
             double [] temp_real_spec_window = abs(spec_window_real, spec_window_imag);
             // Adding the window to the spectrogram
-
-            for (int j = 0; j < real_spec_window.cols; j++){
-                real_spec_window.set(i, j, temp_real_spec_window.getValues()[j]);
+            for (int j = 0; j < real_spec_window.cols; j++) {
+                temp_spectrogram[i][j] = temp_real_spec_window[j];
             }
-            // TODO: (MEL) removed in mean-time
+            // TODO: (MEL) removed in mean-time - NEEDS CONVERSION IF IMPLEMENTED AGAIN ojalgo
 //            // Converting spectrum to melscale
 //            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
 //            if (i == 0) {
@@ -1133,10 +1136,12 @@ public class ScrollingActivity extends AppCompatActivity {
 //                mel_window.set(j, i, temp[j]);
 //            }
         }
+        Primitive64Store spectrogram = createMatrix(temp_spectrogram);
+        temp_spectrogram = null;
         // Transposing the spectrogram to correct orientation
-        real_spec_window = real_spec_window.t().pow(2);
-        // Normalising the spectrogram as well as converting the dB
-        double reference = real_spec_window.
+        spectrogram = pow((Primitive64Store) spectrogram.transpose(), 2);
+        // Normalising the spectrogram as well as converting to dB
+        double reference = min(spectrogram);
                 minOverRows().minOverCols().getValues()[0];
 
         Log.v("AudioProcessing", String.format("STFT Summary:" +
@@ -1757,6 +1762,17 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
+    // Matrices
+    // Create a matrix - empty, shape only
+    private Primitive64Store createMatrix(int rows, int columns) {
+        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
+        return storeFactory.make(rows, columns);
+    }
+    // Create a matrix - filled, from 2D double
+    private Primitive64Store createMatrix(double[][] matrix) {
+        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
+        return (Primitive64Store) storeFactory.makeWrapper(Access2D.wrap(matrix));
+    }
 
     // Mathematics
     // Element-wise multiplication between arrays
@@ -1779,6 +1795,14 @@ public class ScrollingActivity extends AppCompatActivity {
             ret[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
         }
         return ret;
+    }
+    // Element-wise power of matrix by scalar
+    private Primitive64Store pow(Primitive64Store matrix, double expon) {
+        // TODO: ojalgo CHECK - is the .size() the product of rows and cols
+        for (int i = 0; i < matrix.size(); i++){
+            matrix.set(i, Math.pow(matrix.get(i), expon));
+        }
+        return matrix;
     }
 
     // Type converters
