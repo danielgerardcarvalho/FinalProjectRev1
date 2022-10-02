@@ -1081,6 +1081,7 @@ public class ScrollingActivity extends AppCompatActivity {
             // TODO: (MEL) removed in mean-time
             proc_buffer.add(stft(toDouble(proc_data), window_size, hop_size, num_windows,
                     window_coeff, fft/*, frequency_range, melscale_range*/));
+            Log.v("TESTESTESTSET", String.format("%f", min(proc_buffer.get(0))));
         }
     }
 
@@ -1105,6 +1106,8 @@ public class ScrollingActivity extends AppCompatActivity {
         double [] window;
         double [] spec_window_real;
         double [] spec_window_imag;
+        PhysicalStore.Factory<Double, Primitive64Store> spectrogramFACT = Primitive64Store.FACTORY;
+        Primitive64Store spectrogram = spectrogramFACT.make(num_windows, proc_fft_size/2);
         double [][] temp_spectrogram = new double[num_windows][proc_fft_size/2];
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
@@ -1133,9 +1136,17 @@ public class ScrollingActivity extends AppCompatActivity {
 //                mel_window.set(j, i, temp[j]);
 //            }
         }
-        Primitive64Store spectrogram = createMatrix(temp_spectrogram);
+        spectrogram = createMatrix(temp_spectrogram);
+//        int iter = 0;
+//        for (int j = 0; j < temp_spectrogram[0].length; j++){
+//            for (int i = 0; i < temp_spectrogram.length; i++){
+//                spectrogram.set(iter, temp_spectrogram[i][j]*temp_spectrogram[i][j]);
+//                iter++;
+//            }
+//        }
 //        temp_spectrogram = null;
         // Transposing the spectrogram to correct orientation
+//        spectrogram = Primitive64Store.FACTORY.transpose(spectrogram);
         spectrogram = pow(Primitive64Store.FACTORY.transpose(spectrogram), 2);
         // Normalising the spectrogram as well as converting to dB
         double reference = min(spectrogram);
@@ -1150,7 +1161,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         "\n\tnum windows (calculated):\t%d", proc_fft_size, proc_num_time_frames,
                 spectrogram.countRows(), spectrogram.countColumns(), proc_fft_size/2, num_windows));
 
-        return ampToDb(spectrogram, reference);
+        return spectrogram;//ampToDb(spectrogram, reference);
     }
 
     // TODO: currently this fft method in not used (Deprecated for use of FFT class) - NEEDS CONVERSION IF USED AGAIN, ojalgo
@@ -1374,11 +1385,11 @@ public class ScrollingActivity extends AppCompatActivity {
     }
     private void tempProcPlot(ImageView image) {
         // Extract spectrogram from the proc_buffer queue
-        while (proc_buffer == null || proc_buffer.size() == 0) {}
-        Primitive64Store temp = proc_buffer.remove(0);
-        Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());
-        for (int i = (int)temp.countRows()-1; i >= 0; i--){
-            for (int j = 0; j < temp.countColumns(); j++) {
+        while (proc_buffer == null || proc_buffer.size() <= 2) {}
+        Primitive64Store temp = proc_buffer.remove(2);
+        Primitive64Store invert_temp = Primitive64Store.FACTORY.make(temp.countRows(), temp.countColumns());// createMatrix(temp.countRows(), temp.countColumns());
+        for (long i = temp.countRows()-1; i >= 0; i--){
+            for (long j = 0; j < temp.countColumns(); j++) {
                 invert_temp.set(i,j, temp.get(temp.countRows()-(i+1),j));
             }
         }
