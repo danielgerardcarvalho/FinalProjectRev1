@@ -32,14 +32,14 @@ public class BitMapView extends View {
                     int value;
                     int color;
                     value = 255 - (int) (data.get(i,j) * 255);
-//                    color = (255 << 24 | value << 16 | value << 8 | value); // ARGB_8888
-                    color = ((value & 0x01f) | (value & 0x03f) << 5 | (value & 0x01f) << 11); // RGB_565
+                    color = (255 << 24 | value << 16 | value << 8 | value); // ARGB_8888
+//                    color = ((value & 0x01f) | (value & 0x03f) << 5 | (value & 0x01f) << 11); // RGB_565
                     arrayCol[counter] = color;
                     counter++;
                 }
             }
-//            bmp = Bitmap.createBitmap(arrayCol, cols, rows, Bitmap.Config.ARGB_8888);
-            bmp = Bitmap.createBitmap(arrayCol, cols, rows, Bitmap.Config.RGB_565);
+            bmp = Bitmap.createBitmap(arrayCol, cols, rows, Bitmap.Config.ARGB_8888);
+//            bmp = Bitmap.createBitmap(arrayCol, cols, rows, Bitmap.Config.RGB_565);
 
         } else {
             System.err.println("Data Corrupt");

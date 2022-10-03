@@ -86,6 +86,7 @@ public class ScrollingActivity extends AppCompatActivity {
     // audio capture object
     private AudioRecord audio_recorder;
     // audio capture multi-threading
+    private Thread mt_capture_thread;
     private Runnable mt_audio_capture_runnable;
     private Runnable mt_file_capture_runnable;
     private boolean mt_audio_capture_flag;
@@ -97,6 +98,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private final int HANN = 0;
     private final int PROC_QUEUE_SIZE = 2;
     // processing multi-threading
+    private Thread mt_processing_thread;
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
     private short [] proc_data;
@@ -106,8 +108,9 @@ public class ScrollingActivity extends AppCompatActivity {
 
     /* Classifier */
     // classifier constants
-    private final int DETECT_QUEUE_SIZE = 1;
+    private final int CLASSIFIER_QUEUE_SIZE = 1;
     // classifier multi-thread
+    private Thread mt_classifier_thread;
     private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
     private boolean mt_classifier_flag;                 // multi-thread status flag
     private NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
@@ -117,9 +120,9 @@ public class ScrollingActivity extends AppCompatActivity {
 
     /* Plotting */
     // plotting multi-thread
+    private Thread mt_plotting_thread;
     private Runnable mt_plotting_runnable;              // multi-thread handler (runnable)
     private boolean mt_plotting_flag;                   // multi-thread status flag
-    private ArrayList<BitMapView> plots;                // list of active plot objects
     ArrayList<ImageView> imageViews;                    // list of active ui interfaces
     private int plotting_update_interval;
     private boolean capture_plotting_flag;
@@ -299,6 +302,10 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Change icon image
                 fab.setImageResource(android.R.drawable.ic_media_play);
 
+                // Stop plotting thread
+                if (mt_plotting_flag) {
+                    stopPlotting();
+                }
                 // Stop classifier thread
                 if (mt_classifier_flag) {
                     stopClassifier();
@@ -340,7 +347,7 @@ public class ScrollingActivity extends AppCompatActivity {
 //                tempProcPlot(image);
 //                tempClassifierPlot(image);
 
-                capture_plotting_flag = true;
+                capture_plotting_flag = false;
                 processing_plotting_flag = true;
                 classifier_plotting_flag = true;
                 configurePlotting();
@@ -531,6 +538,8 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getHint().toString());
         }
+        // Number of internal components in NMF model, taken from imported data
+        classifier_num_inter_comp = model_num_inter_comp * model_num_training_samples;
 
         // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
         //  a system that states which settings are missing or in error. Therefore returning true
@@ -770,7 +779,10 @@ public class ScrollingActivity extends AppCompatActivity {
             // Read data from the processing buffer and delete
             Log.v("Classifier", "Classifier thread is starting...");
             // The infinite while loop in in classifier
-            classifier();
+            try{classifier();}
+            catch(Exception e){
+                e.printStackTrace();
+            }
             Log.v("Classifier", "Classifier thread has been closed.");
         };
         // Plotting Runnable
@@ -938,7 +950,8 @@ public class ScrollingActivity extends AppCompatActivity {
         // Starting recording interface
         audio_recorder.startRecording();
         // Starting recording read thread
-        new Thread(mt_audio_capture_runnable).start();
+        mt_classifier_thread = new Thread(mt_audio_capture_runnable);
+        mt_classifier_thread.start();
     }
 
     private void stopCapture(){
@@ -992,6 +1005,16 @@ public class ScrollingActivity extends AppCompatActivity {
         int num_read = audio_recorder.read(temp, 0, cap_buffer_size);
 
         // Add read data to capture buffer
+        while (cap_buffer.size() == CAP_QUEUE_SIZE){
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            if (!mt_audio_capture_flag){
+                break;
+            }
+        }
         cap_buffer.add(temp);
         Log.v("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
                 "\n\tQueue location:%d", num_read, cap_buffer.size()));
@@ -1074,12 +1097,10 @@ public class ScrollingActivity extends AppCompatActivity {
 
         // Thread infinite loop
         while(mt_audio_processing_flag) {
-//            Log.v("AudioProcessing", "Audio Pre-processing thread is active...");
             // Wait if no value is available in the buffer
             while (cap_buffer == null || cap_buffer.size() == 0){
                 try {
-                    Log.v("AudioProcessing", "waiting for capture buffer to fill...");
-                    Thread.sleep(1000);
+                    Thread.sleep(200);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -1091,15 +1112,31 @@ public class ScrollingActivity extends AppCompatActivity {
             byte[] temp = cap_buffer.remove(0);
             // Converting from bytes to short
             proc_data = bytesToShort(temp, cap_format);
+            // Normalising the capture data
+            double[] norm_proc_data = norm(proc_data, max(abs(proc_data)));
             Log.v("AudioProcessing", String.format("Conversion from Bytes:" +
                     "\n\tInput from buffer: %d" +
-                    "\n\tOutput from byte conversion: %d", cap_buffer_size, proc_data.length));
+                    "\n\tOutput from byte conversion: %d" +
+                    "\n\tMax absolute value in buffer: %d" +
+                    "\n\tMax absolute value of normalised buffer: %f", cap_buffer_size, proc_data.length,
+                    max(abs(proc_data)), max(abs(norm_proc_data))));
 
             // Perform STFT
-            // TODO: NEEDS CONVERT - STFT and proc_buffer both include or are jeigen types
             // TODO: (MEL) removed in mean-time
-            proc_buffer.add(stft(toDouble(proc_data), window_size, hop_size, num_windows,
-                    window_coeff, fft/*, frequency_range, melscale_range*/));
+            Primitive64Store stft = stft(norm_proc_data, window_size, hop_size, num_windows,
+                    window_coeff, fft/*, frequency_range, melscale_range*/);
+            // Check if processing buffer is full
+            while (proc_buffer.size() == PROC_QUEUE_SIZE){
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (!mt_audio_processing_flag){
+                    break;
+                }
+            }
+            proc_buffer.add(stft);
         }
     }
 
@@ -1140,7 +1177,8 @@ public class ScrollingActivity extends AppCompatActivity {
             spec_window_real = getValuesInRange(fft.getFFTReal(), 0, proc_fft_size/2);
             spec_window_imag = getValuesInRange(fft.getFFTImag(), 0, proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
-            double [] temp_real_spec_window = abs(spec_window_real, spec_window_imag);
+            double temp_scaler = proc_fft_size/2;
+            double [] temp_real_spec_window = abs(divide(spec_window_real, temp_scaler), divide(spec_window_imag, temp_scaler));
             // Adding the window to the spectrogram
             for (int j = 0; j < proc_fft_size/2; j++) {
                 temp_spectrogram[i][j] = temp_real_spec_window[j];
@@ -1157,11 +1195,12 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         // Converting from double[][] to Primitive64Storage
         spectrogram = createMatrix(temp_spectrogram);
+        // Converting from amplitude to dB
+        double reference = min(spectrogram);
+        spectrogram = ampToDB(spectrogram, reference);
         // Transposing the spectrogram to correct orientation
 //        spectrogram = Primitive64Store.FACTORY.transpose(spectrogram);
-        spectrogram = pow(Primitive64Store.FACTORY.transpose(spectrogram), 2);
-        // Normalising the spectrogram as well as converting to dB
-        double reference = min(spectrogram);
+        spectrogram = pow(Primitive64Store.FACTORY.transpose(spectrogram), 2.0);
 
         Log.v("AudioProcessing", String.format("STFT Summary:" +
                         "\n\tinput fft size (rows):\t\t%d" +
@@ -1173,7 +1212,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         "\n\tnum windows (calculated):\t%d", proc_fft_size, proc_num_time_frames,
                 spectrogram.countRows(), spectrogram.countColumns(), proc_fft_size/2, num_windows));
 
-        return ampToDB(spectrogram, reference);
+        return spectrogram;
     }
 
     // TODO: currently this fft method in not used (Deprecated for use of FFT class) - NEEDS CONVERSION IF USED AGAIN, ojalgo
@@ -1289,12 +1328,14 @@ public class ScrollingActivity extends AppCompatActivity {
         // Set the activity flag to true as sub-system is starting
         mt_classifier_flag = true;
         // Start pre-processing thread
-        new Thread(mt_classifier_runnable).start();
+        mt_classifier_thread = new Thread(mt_classifier_runnable);
+        mt_classifier_thread.start();
     }
 
     private void stopClassifier() {
         // Stopping classifier thread
         mt_classifier_flag = false;
+        mt_classifier_thread.interrupt();
     }
 
     private void classifier() {
@@ -1321,7 +1362,7 @@ public class ScrollingActivity extends AppCompatActivity {
             // Reading data from the processing buffer queue
             while (proc_buffer == null || proc_buffer.size() == 0) {
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(200);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -1336,19 +1377,30 @@ public class ScrollingActivity extends AppCompatActivity {
             nmf.start();
             // Retrieving results from nmf class object
             Primitive64Store V2_output = nmf.getV2();
-            double V2_norm = mean(V2_output);
+
             // Basic thresholding implementation
+            double V2_mean = mean(V2_output);
+            double norm_modifier = 1.8;
             for (int i = 0; i < V2_output.size(); i++) {
-                if (V2_norm > V2_output.get(i)){
+                if ((V2_mean * norm_modifier) > V2_output.get(i)){
                     V2_output.set(i, 0);
                 } else {
                     V2_output.set(i,1);
                 }
             }
+            // Check if processing buffer is full
+            while (classifier_buffer.size() == CLASSIFIER_QUEUE_SIZE){
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (!mt_classifier_flag){
+                    break;
+                }
+            }
+            // Add results to classifier buffer
             classifier_buffer.add(V2_output);
-            // Adding results to classifier buffer
-            // TODO: classifier: implement buffer addition
-//            classifier_buffer.add()
         }
     }
 
@@ -1445,6 +1497,10 @@ public class ScrollingActivity extends AppCompatActivity {
     private void configurePlotting() {
         // Configure the plotting sub-system
         imageViews = new ArrayList<>();
+        // Enable the multi-thread flags
+        mt_plotting_flag = true;
+        // Configure update interval
+        plotting_update_interval = 500;
 
         // TODO: implement requested plots and have live updates
         if (capture_plotting_flag){
@@ -1461,16 +1517,25 @@ public class ScrollingActivity extends AppCompatActivity {
         new Thread(mt_plotting_runnable).start();
     }
 
+    private void stopPlotting(){
+        mt_plotting_flag = false;
+        capture_plotting_flag = false;
+        processing_plotting_flag = false;
+        classifier_plotting_flag = false;
+    }
+
     private void plotting() {
         int curr_image_view = 0;
+        // Time domain plot
         if (capture_plotting_flag && proc_data != null) {
             // Configure the plot
+            short [] temp_data = proc_data.clone();
             int width = Math.min(proc_data.length, 22050);
             int height = 900;
             int max = 0;
             for (int i = 0; i < width; i++){
-                if (Math.abs(proc_data[i]) > max)
-                    max = Math.abs(proc_data[i]);
+                if (Math.abs(temp_data[i]) > max)
+                    max = Math.abs(temp_data[i]);
             }
             // create matrix from proc_data
             Primitive64Store temp = createMatrix(height, Math.abs(width));
@@ -1478,7 +1543,7 @@ public class ScrollingActivity extends AppCompatActivity {
             int iter = (int)(-height/2.0);
             for (int i = 0; i < height; i++){
                 for (int j = 0; j < width; j++){
-                    if ((Math.abs(proc_data[j]/(1.0*max))*(height/2.0)) >= Math.abs(iter)){
+                    if ((Math.abs(temp_data[j]/(1.0*max))*(height/2.0)) >= Math.abs(iter)){
                         temp.set(i,j,1);
                     } else {
                         temp.set(i, j, 0);
@@ -1488,10 +1553,12 @@ public class ScrollingActivity extends AppCompatActivity {
             }
 
             BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
-            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+
+//            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+            plottingUpdate(sp_view_obj, curr_image_view);
             curr_image_view++;
         }
-
+        // STFT plot
         if (processing_plotting_flag && classifier_data != null) {
             Primitive64Store temp = classifier_data;
             Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());
@@ -1500,16 +1567,17 @@ public class ScrollingActivity extends AppCompatActivity {
                     invert_temp.set(i,j, temp.get(temp.countRows()-(i+1),j));
                 }
             }
-            Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
+//            Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
             // TODO: cleanup
 //        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
             Primitive64Store val = toPrimitive(invert_temp.divide(max(invert_temp)));
-            Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
+//            Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
             BitMapView sp_view_obj = new BitMapView(this, val, imageViews.get(curr_image_view).getWidth());
-            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+//            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+            plottingUpdate(sp_view_obj, curr_image_view);
             curr_image_view++;
         }
-
+        // Classifier output plot
         if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
             Primitive64Store temp = classifier_buffer.remove(0);
 //        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
@@ -1521,10 +1589,14 @@ public class ScrollingActivity extends AppCompatActivity {
 //        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
 //        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
             BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
-            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+//            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+            plottingUpdate(sp_view_obj, curr_image_view);
         }
     }
 
+    private void plottingUpdate(BitMapView bitmap_obj, int curr_image_view){
+        runOnUiThread(() -> imageViews.get(curr_image_view).setImageBitmap(bitmap_obj.bmp));
+    }
 
     /* Helpers */
 
@@ -1697,6 +1769,14 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
+    // Element-wise divide of array and scalar
+    private double[] divide(double [] array, double scalar) {
+        double[] ret = new double[array.length];
+        for (int i = 0; i < array.length; i++) {
+            ret[i] = array[i] / scalar;
+        }
+        return ret;
+    }
     // Element-wise multiplication between arrays
     private double[] mul(double [] array1, double [] array2) {
         if (array1.length != array2.length){
@@ -1754,6 +1834,23 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
+    // Absolute values of an array
+    private double[] abs(double[] array){
+        double [] ret = new double[array.length];
+        for (int i = 0; i < array.length; i++) {
+            ret[i] = (double) Math.abs(array[i]);
+        }
+        return ret;
+    }
+    // Absolute values of an array
+    private short[] abs(short[] array){
+        short [] ret = new short[array.length];
+        for (int i = 0; i < array.length; i++) {
+            ret[i] = (short) Math.abs(array[i]);
+        }
+        return ret;
+    }
+
     // Get smallest value in the matrix
     private double min(Primitive64Store matrix) {
         double ret = matrix.get(0);
@@ -1767,6 +1864,30 @@ public class ScrollingActivity extends AppCompatActivity {
         double ret = matrix.get(0);
         for (long i = 0; i < matrix.size(); i++){
             ret = Math.max(matrix.get(i), ret);
+        }
+        return ret;
+    }
+    // Get largest value in an array
+    private short max(short[] array){
+        short value = array[0];
+        for (int i = 0; i < array.length; i++) {
+            value = (short) Math.max(array[i], value);
+        }
+        return value;
+    }
+    // Get largest value in an array
+    private double max(double[] array){
+        double value = array[0];
+        for (int i = 0; i < array.length; i++) {
+            value = (double) Math.max(array[i], value);
+        }
+        return value;
+    }
+    // Calculate the norm of array
+    private double[] norm(short[] array, double reference) {
+        double [] ret = new double[array.length];
+        for (int i = 0; i < array.length; i++) {
+            ret[i] = array[i]/reference;
         }
         return ret;
     }

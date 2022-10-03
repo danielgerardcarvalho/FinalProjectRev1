@@ -62,7 +62,7 @@ public class NMF {
         // Constructing the V1 and V2 matrices
         this.V1 = createMatrix(f, n);
         this.V2 = createMatrix(e, n);
-        this.ones = createMatrix(f, n, 1);
+        this.ones = createMatrix(f, n, 1.0);
         // Constructing the dictionary matrices W1 and W2
         initW();
         // Constructing the coefficient matrix H
