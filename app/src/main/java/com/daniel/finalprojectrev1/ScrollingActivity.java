@@ -11,6 +11,7 @@ import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.HandlerThread;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -36,12 +37,9 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.Gson;
 
-import org.ojalgo.matrix.ComplexMatrix;
-import org.ojalgo.matrix.Primitive64Matrix;
 import org.ojalgo.matrix.store.MatrixStore;
 import org.ojalgo.matrix.store.PhysicalStore;
 import org.ojalgo.matrix.store.Primitive64Store;
-import org.ojalgo.structure.Access2D;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -52,10 +50,8 @@ import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import jeigen.DenseMatrix;
-import jeigen.DenseMatrixComplex;
 
 public class ScrollingActivity extends AppCompatActivity {
 
@@ -118,6 +114,17 @@ public class ScrollingActivity extends AppCompatActivity {
     private Primitive64Store classifier_data;                // classifier input
     private ArrayList<Primitive64Store> classifier_buffer;   // classifier output buffer
 
+
+    /* Plotting */
+    // plotting multi-thread
+    private Runnable mt_plotting_runnable;              // multi-thread handler (runnable)
+    private boolean mt_plotting_flag;                   // multi-thread status flag
+    private ArrayList<BitMapView> plots;                // list of active plot objects
+    ArrayList<ImageView> imageViews;                    // list of active ui interfaces
+    private int plotting_update_interval;
+    private boolean capture_plotting_flag;
+    private boolean processing_plotting_flag;
+    private boolean classifier_plotting_flag;
 
     /* UI Associated Model Import Settings */
     // Inputs - TODO: removing to reduce memory use
@@ -221,10 +228,6 @@ public class ScrollingActivity extends AppCompatActivity {
         EditText snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
         EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
         EditText num_inter_comp_text = (EditText) findViewById(R.id.input_model_import_num_components);
-
-        // TODO: temporary image view, used to test the plot output and test the capture and
-        //  processing functions.
-        ImageView image = findViewById(R.id.imageView);
 
         // TODO: declaring the variables locally to reduce memory use
         /* Capture Setting Inputs */
@@ -335,7 +338,12 @@ public class ScrollingActivity extends AppCompatActivity {
 //                tempTestPlot(image);
 //                tempCapPlot(image);
 //                tempProcPlot(image);
-                tempClassifierPlot(image);
+//                tempClassifierPlot(image);
+
+                capture_plotting_flag = true;
+                processing_plotting_flag = true;
+                classifier_plotting_flag = true;
+                configurePlotting();
 
                 system_flag = true;
             }
@@ -515,7 +523,7 @@ public class ScrollingActivity extends AppCompatActivity {
         if (!TextUtils.isEmpty(classifier_num_inter_comp_input.getText())) {
             classifier_num_inter_comp = Integer.parseInt(classifier_num_inter_comp_input.getText().toString());
         } else {
-            classifier_num_inter_comp = model_num_inter_comp;
+            classifier_num_inter_comp = model_num_inter_comp * model_num_training_samples;
         }
         // - classifier number of internal iterations
         if (!TextUtils.isEmpty(classifier_num_iters_input.getText())) {
@@ -764,6 +772,19 @@ public class ScrollingActivity extends AppCompatActivity {
             // The infinite while loop in in classifier
             classifier();
             Log.v("Classifier", "Classifier thread has been closed.");
+        };
+        // Plotting Runnable
+        mt_plotting_runnable = () -> {
+            Log.v("Plotting", "Plotting thread is starting...");
+            while(mt_plotting_flag) {
+                try {
+                    Thread.sleep(plotting_update_interval);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                plotting();
+            }
+            Log.v("Plotting", "Plotting thread has been closed");
         };
     }
 
@@ -1300,7 +1321,6 @@ public class ScrollingActivity extends AppCompatActivity {
             // Reading data from the processing buffer queue
             while (proc_buffer == null || proc_buffer.size() == 0) {
                 try {
-                    Log.v("Classifier", "waiting for processing buffer to fill...");
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -1354,7 +1374,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
 //        spec_matrix = spec_matrix.div(temp_max);
 
-        SpectrogramView sp_view_obj = new SpectrogramView(this, spec_matrix, image.getWidth());
+        BitMapView sp_view_obj = new BitMapView(this, spec_matrix, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempCapPlot(ImageView image){
@@ -1381,7 +1401,7 @@ public class ScrollingActivity extends AppCompatActivity {
             iter++;
         }
 
-        SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
+        BitMapView sp_view_obj = new BitMapView(this, temp, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempProcPlot(ImageView image) {
@@ -1399,7 +1419,7 @@ public class ScrollingActivity extends AppCompatActivity {
 //        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
         Primitive64Store val = toPrimitive(invert_temp.divide(max(invert_temp)));
         Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
-        SpectrogramView sp_view_obj = new SpectrogramView(this, val, image.getWidth());
+        BitMapView sp_view_obj = new BitMapView(this, val, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempClassifierPlot(ImageView image) {
@@ -1414,11 +1434,96 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
 //        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
-        SpectrogramView sp_view_obj = new SpectrogramView(this, temp, image.getWidth());
+        BitMapView sp_view_obj = new BitMapView(this, temp, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
 
     // Data handling
+
+
+    /* Plotting */
+    private void configurePlotting() {
+        // Configure the plotting sub-system
+        imageViews = new ArrayList<>();
+
+        // TODO: implement requested plots and have live updates
+        if (capture_plotting_flag){
+            imageViews.add(findViewById(R.id.imageView0));
+        }
+        if (processing_plotting_flag ) {
+            imageViews.add(findViewById(R.id.imageView1));
+        }
+        if (classifier_plotting_flag) {
+            imageViews.add(findViewById(R.id.imageView2));
+        }
+
+        // TODO: Start Plotting Thread Runnable
+        new Thread(mt_plotting_runnable).start();
+    }
+
+    private void plotting() {
+        int curr_image_view = 0;
+        if (capture_plotting_flag && proc_data != null) {
+            // Configure the plot
+            int width = Math.min(proc_data.length, 22050);
+            int height = 900;
+            int max = 0;
+            for (int i = 0; i < width; i++){
+                if (Math.abs(proc_data[i]) > max)
+                    max = Math.abs(proc_data[i]);
+            }
+            // create matrix from proc_data
+            Primitive64Store temp = createMatrix(height, Math.abs(width));
+
+            int iter = (int)(-height/2.0);
+            for (int i = 0; i < height; i++){
+                for (int j = 0; j < width; j++){
+                    if ((Math.abs(proc_data[j]/(1.0*max))*(height/2.0)) >= Math.abs(iter)){
+                        temp.set(i,j,1);
+                    } else {
+                        temp.set(i, j, 0);
+                    }
+                }
+                iter++;
+            }
+
+            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
+            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+            curr_image_view++;
+        }
+
+        if (processing_plotting_flag && classifier_data != null) {
+            Primitive64Store temp = classifier_data;
+            Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());
+            for (long i = temp.countRows()-1; i >= 0; i--){
+                for (long j = 0; j < temp.countColumns(); j++) {
+                    invert_temp.set(i,j, temp.get(temp.countRows()-(i+1),j));
+                }
+            }
+            Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
+            // TODO: cleanup
+//        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
+            Primitive64Store val = toPrimitive(invert_temp.divide(max(invert_temp)));
+            Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
+            BitMapView sp_view_obj = new BitMapView(this, val, imageViews.get(curr_image_view).getWidth());
+            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+            curr_image_view++;
+        }
+
+        if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
+            Primitive64Store temp = classifier_buffer.remove(0);
+//        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
+//        for (int i = temp.rows-1; i >= 0; i--){
+//            for (int j = 0; j < temp.cols; j++) {
+//                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
+//            }
+//        }
+//        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
+//        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
+            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+        }
+    }
 
 
     /* Helpers */
@@ -1682,6 +1787,8 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
+
+    // Converting between DenseMatrix and Primitive64Store (Deprecated)
     private DenseMatrix convertPD(Primitive64Store temp){
         DenseMatrix ret = new DenseMatrix((int) temp.countRows(), (int) temp.countColumns());
         for (int i = 0; i < temp.size(); i ++){

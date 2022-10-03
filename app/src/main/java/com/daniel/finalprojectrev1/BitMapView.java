@@ -8,12 +8,12 @@ import android.view.View;
 
 import org.ojalgo.matrix.store.Primitive64Store;
 
-public class SpectrogramView extends View {
+public class BitMapView extends View {
     public Paint paint = new Paint();
     public Bitmap bmp;
     private int [] shape;
 
-    public SpectrogramView(Context context, Primitive64Store data, int source_width) {
+    public BitMapView(Context context, Primitive64Store data, int source_width) {
         super(context);
         constructBitMap(data, source_width);
     }
@@ -32,18 +32,23 @@ public class SpectrogramView extends View {
                     int value;
                     int color;
                     value = 255 - (int) (data.get(i,j) * 255);
-                    color = (value << 16 | value << 8 | value | 255 << 24);
+//                    color = (255 << 24 | value << 16 | value << 8 | value); // ARGB_8888
+                    color = ((value & 0x01f) | (value & 0x03f) << 5 | (value & 0x01f) << 11); // RGB_565
                     arrayCol[counter] = color;
                     counter++;
                 }
             }
-            bmp = Bitmap.createBitmap(arrayCol, cols, rows, Bitmap.Config.ARGB_8888);
+//            bmp = Bitmap.createBitmap(arrayCol, cols, rows, Bitmap.Config.ARGB_8888);
+            bmp = Bitmap.createBitmap(arrayCol, cols, rows, Bitmap.Config.RGB_565);
 
         } else {
             System.err.println("Data Corrupt");
         }
         bmp = Bitmap.createScaledBitmap(bmp, source_width, (int) (source_width*0.5), false);
     }
+
+    // TODO: Implement to add labels - try to add x-axis as well
+    private void constructLables(){}
 
     @Override
     protected void onDraw(Canvas canvas) {
