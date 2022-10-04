@@ -59,6 +59,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     /* General Operation */ //TODO: maybe change some of these to individual sub-systems later?
     private boolean system_flag;
+    private final double MIN_CONST = Math.pow(10, -20);
 
     /* Model Import */
     // model import constants
@@ -1204,12 +1205,14 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         // Converting from double[][] to Primitive64Storage
         spectrogram = createMatrix(temp_spectrogram);
+
         // Converting from amplitude to dB
         double reference = min(spectrogram);
-        spectrogram = ampToDB(spectrogram, reference);
-        // Transposing the spectrogram to correct orientation
-//        spectrogram = Primitive64Store.FACTORY.transpose(spectrogram);
-        spectrogram = pow(Primitive64Store.FACTORY.transpose(spectrogram), 2.0);
+        spectrogram = toPrimitive(ampToDB(spectrogram, reference).add(MIN_CONST));
+
+        // Transposing the spectrogram to correct orientation, taking spectrogram to power of 2 for
+        // noise resistance
+        spectrogram = pow(toPrimitive(spectrogram.transpose()), 2.0);
 
         Log.v("AudioProcessing", String.format("STFT Summary:" +
                         "\n\tinput fft size (rows):\t\t%d" +
@@ -1390,7 +1393,7 @@ public class ScrollingActivity extends AppCompatActivity {
             double V2_mean = mean(V2_output);
             double norm_modifier = 1.8;
             for (int i = 0; i < V2_output.size(); i++) {
-                if ((V2_mean * norm_modifier) > V2_output.get(i)){
+                if ((V2_mean * norm_modifier) >= V2_output.get(i)){
                     V2_output.set(i, 0);
                 } else {
                     V2_output.set(i,1);

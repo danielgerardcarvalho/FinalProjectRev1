@@ -51,7 +51,7 @@ public class NMF {
     // current iteration number
     private int curr_iter_num;
     // MIN CONST
-    private double MIN_CONST = Math.pow(10, -300);
+    private double MIN_CONST = Math.pow(10, -20);
 
     // operation flag
     private boolean operation_flag;
@@ -119,12 +119,11 @@ public class NMF {
         //  or average the results between them. Will this really help? obviouse computation and
         //  storage burden. Maybe different binarisations. Don't need multiple runs for that!
 
-        double min_const = Math.pow(1.0 * 10, -30);
         // Starting the computation loop
         // TODO: add error thresholding
         while (curr_iter_num < this.iter_limit && operation_flag) {
             // Update the matrices
-            update(min_const);
+            update();
             // Calculate the error
             calcError();
             // Progress display, giving error and current iteration number and total iterations
@@ -142,7 +141,7 @@ public class NMF {
     }
 
     // TODO: improve - high
-    private void update(double min_const) {
+    private void update() {
         // NOTE: Current implementation
         // Kullback-Leibler Multiplicative Update Rule
         // Pre-allocating data
@@ -151,7 +150,7 @@ public class NMF {
         Primitive64Store denominator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
         // Calculating the V1 estimate
         this.W1.multiply(this.H, V1_estimate);
-        V1_estimate = toPrimitive(V1_estimate.add(min_const));
+        V1_estimate = toPrimitive(V1_estimate.add(MIN_CONST));
         // Calculating the numerator
         this.W1.transpose().multiply(divide(this.V1, V1_estimate), numerator);
         // Calculating the denominator
@@ -159,7 +158,6 @@ public class NMF {
 //        denominator = toPrimitive(denominator.add(min_const));
         // TODO: Check if the min_const add to denominator is needed
         this.H = mul(this.H, (divide(numerator, denominator)));
-
 //        // Kullback-Leibler Multiplicative Update Rule
 //        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.f, this.n);
 //        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.k, this.n);
@@ -192,8 +190,10 @@ public class NMF {
         // NOTE: current implementation
         // TODO: see that this multiplication is matmul and not element wise
         Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H).add(this.MIN_CONST));
-        Primitive64Store deviation = toPrimitive(log(divide(this.V1, V1_est), 10));
+        Primitive64Store deviation_log = log(divide(this.V1, V1_est));
+        Primitive64Store deviation = toPrimitive(mul(this.V1, deviation_log));
         error.add(sum(toPrimitive(deviation.add(V1_est.subtract(this.V1)))));
+
 //        error.add(sum(toPrimitive(this.V1.multiply(toPrimitive(log(divide(this.V1, V1_est)))).subtract(this.V1).add(V1_est))));
 
 
@@ -230,7 +230,7 @@ public class NMF {
     private void initH() {
         // Creating the matrices
         this.H = Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Gamma(1.0, 1.0));
-        this.H = toPrimitive(this.H.divide(max(abs(this.H))));
+        this.H = toPrimitive(this.H.divide(max(abs(this.H))).add(MIN_CONST));
         Log.e("NMF TEST", String.format("H max: %f, min: %f", max(abs(this.H)), min(abs(this.H))));
 //        this.H = (Primitive64Store) Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Poisson(1.0));
     }
@@ -240,6 +240,7 @@ public class NMF {
 
     public void loadV1(Primitive64Store data) {
         this.V1 = data.copy();
+        this.V1 = toPrimitive(this.V1.divide(sum(this.V1)));
     }
 
     public void loadW1(double [][] data) {
@@ -272,7 +273,6 @@ public class NMF {
     }
 
     /* Helpers */
-
     // Create a matrix - empty, shape only
     private Primitive64Store createMatrix(long rows, long columns) {
 //        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
