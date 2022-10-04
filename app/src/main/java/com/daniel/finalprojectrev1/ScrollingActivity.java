@@ -726,10 +726,13 @@ public class ScrollingActivity extends AppCompatActivity {
         // Capture
         cap_sample_rate_input.setText(String.format("%d", cap_sample_rate));
         cap_time_interval_input.setText(String.format("%d", cap_time_interval));
-        if (cap_format == AUDIO_FORMAT_INT16){
+        if (cap_format == AUDIO_FORMAT_INT16) {
             cap_format_input.setSelection(0);
-        } else {
+        } else if (cap_format == AUDIO_FORMAT_FLOAT) {
             cap_format_input.setSelection(1);
+        }
+        else {
+            cap_format_input.setSelection(0);
         }
         // Processing
         proc_fft_size_input.setText(String.format("%d", proc_fft_size));
@@ -1092,8 +1095,8 @@ public class ScrollingActivity extends AppCompatActivity {
         // TODO: (MEL) decide fate of mel-spectrogram things, current implementation is wrong, not
         //  sure if mel-spectrum is needed at all. (removed in mean-time) - WILL NEED CONVERSION ojalgo
 //        //  Finding frequency range and melscale range for conversion
-//        DenseMatrix frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
-//        DenseMatrix melscale_range = ((((frequency_range.div(1127)).exp()).sub(1)).mul(700));
+//        Primitive64Store frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
+//        Primitive64Store melscale_range = (((toPrimitive(frequency_range.divide(1127)).exp()).sub(1)).mul(700));
 
         // Thread infinite loop
         while(mt_audio_processing_flag) {
@@ -1110,8 +1113,17 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             // Fetch data from the capture buffer queue
             byte[] temp = cap_buffer.remove(0);
+            // TODO: TESTING
+            // Converting from bytes to respective capture format
+            if (cap_format == AUDIO_FORMAT_INT16) {
+                proc_data = bytesToShort(temp, cap_format);
+            } else if (cap_format == AUDIO_FORMAT_FLOAT) {
+                proc_data = bytesToFloatShort(temp, cap_format);
+            } else {
+                proc_data = bytesToShort(temp, cap_format);
+            }
             // Converting from bytes to short
-            proc_data = bytesToShort(temp, cap_format);
+//            proc_data = bytesToShort(temp, cap_format);
             // Normalising the capture data
             double[] norm_proc_data = norm(proc_data, max(abs(proc_data)));
             Log.v("AudioProcessing", String.format("Conversion from Bytes:" +
@@ -1153,17 +1165,14 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
-    // TODO: ojalgo: CHECK - certain function calls may not do what you think, .size() .multiply, especially between Matrices and Matrices
     // TODO: (MEL) removed in mean-time.
     private Primitive64Store stft(double[] data, int window_size, int hop_size, int num_windows,
-                             double[] window_coeff, FFT fft/*, DenseMatrix frequency_range,
-                             DenseMatrix melscale_range*/) {
+                             double[] window_coeff, FFT fft/*, Primitive64Store frequency_range,
+                             Primitive64Store melscale_range*/) {
         double [] window;
         double [] spec_window_real;
         double [] spec_window_imag;
-        // TODO: Cleanup
-        //PhysicalStore.Factory<Double, Primitive64Store> spectrogramFACT = Primitive64Store.FACTORY;
-        Primitive64Store spectrogram;// = spectrogramFACT.make(num_windows, proc_fft_size/2);
+        Primitive64Store spectrogram;
         double [][] temp_spectrogram = new double[num_windows][proc_fft_size/2];
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
@@ -1340,9 +1349,9 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private void classifier() {
         // Calculating number of time frames
-        int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
+        int num_windows = (int) (Math.floor((cap_time_interval * (proc_sample_rate * 1.0) -
                 (int) Math.ceil(proc_window_time * proc_sample_rate)) /
-                (int) Math.ceil(proc_hop_time * proc_sample_rate))+1;
+                (int) Math.ceil(proc_hop_time * proc_sample_rate))+1);
         // Initialising the NMF class
         NMF nmf = new NMF(
                 classifier_fft_size,
@@ -1377,7 +1386,6 @@ public class ScrollingActivity extends AppCompatActivity {
             nmf.start();
             // Retrieving results from nmf class object
             Primitive64Store V2_output = nmf.getV2();
-
             // Basic thresholding implementation
             double V2_mean = mean(V2_output);
             double norm_modifier = 1.8;
@@ -1405,6 +1413,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Result display
+    // TODO: deprecated - moved to dedicated plotting sub system - remove
     private void tempTestPlot(ImageView image){
         // Setting the matrix size
         int num_freq_bins = 128;
@@ -1628,8 +1637,10 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             ret = new short[(int)(array.length/2)];
         }
-//        short [] ret = new short[(int)(array.length/2)];
+        // TODO: Forcing the array to int length - just for testing
+//        ret = new short[(int)(array.length/4)];
 
+        // TODO: CURRENT -works for recording, just not the data that I create in python
         ByteBuffer buffer = ByteBuffer.wrap(array);
         buffer.order(ByteOrder.nativeOrder());
 //        buffer.order(ByteOrder.BIG_ENDIAN);
@@ -1639,6 +1650,41 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
 
+//        // BIG Endian (int to short)
+//        for (int i = 0; 4 * i + 3 < array.length; i++){
+//            ret[i] = (short) ((array[4*i+3] & 0xff) | ((array[4*i+2] & 0xff) << 8) | ((array[4*i+1]) << 16) | ((array[4*i] & 0xff) << 24));
+//        }
+//        return ret;
+//        // BIG Endian
+//        for (int i = 0; 2*i+1 < array.length; i++){
+//            ret[i] = (short) ((array[2*i+1] & 0xff) | ((array[2*i+0] & 0xff) << 8));
+//        }
+//        return ret;
+
+//        // Little Endian
+//        for (int i = 0; 2*i+1 < array.length; i++){
+//            ret[i] = (short) ((array[2*i+0] & 0xff) | ((array[2*i+1] & 0xff) << 8));
+//        }
+//        return ret;
+    }
+    // Convert from byte array to short []
+    private short[] bytesToFloatShort(byte[] array, int format) {
+        short [] ret = new short[(int) (array.length / 4)];
+
+        ByteBuffer buffer = ByteBuffer.wrap(array);
+        buffer.order(ByteOrder.nativeOrder());
+//        buffer.order(ByteOrder.BIG_ENDIAN);
+        int count = 0;
+        while(buffer.hasRemaining()){
+            ret[count++] = (short) (32767 * buffer.getFloat());
+        }
+        return ret;
+
+//        // BIG Endian (int to short)
+//        for (int i = 0; 4 * i + 3 < array.length; i++){
+//            ret[i] = (short) ((array[4*i+3] & 0xff) | ((array[4*i+2] & 0xff) << 8) | ((array[4*i+1]) << 16) | ((array[4*i] & 0xff) << 24));
+//        }
+//        return ret;
 //        // BIG Endian
 //        for (int i = 0; 2*i+1 < array.length; i++){
 //            ret[i] = (short) ((array[2*i+1] & 0xff) | ((array[2*i+0] & 0xff) << 8));

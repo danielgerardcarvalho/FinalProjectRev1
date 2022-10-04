@@ -5,6 +5,8 @@ import android.util.Log;
 import org.ojalgo.matrix.store.MatrixStore;
 import org.ojalgo.matrix.store.Primitive64Store;
 import org.ojalgo.random.Gamma;
+import org.ojalgo.random.Poisson;
+import org.ojalgo.random.process.GaussianField;
 
 import java.util.ArrayList;
 
@@ -48,6 +50,8 @@ public class NMF {
     private int iter_limit;
     // current iteration number
     private int curr_iter_num;
+    // MIN CONST
+    private double MIN_CONST = Math.pow(10, -300);
 
     // operation flag
     private boolean operation_flag;
@@ -124,7 +128,7 @@ public class NMF {
             // Calculate the error
             calcError();
             // Progress display, giving error and current iteration number and total iterations
-            if (curr_iter_num % 10 == 0){
+            if (curr_iter_num % 1 == 0){
                 Log.v("ClassifierNMF", String.format("Iteration: %d / %d, error: %f",
                         curr_iter_num, this.iter_limit, this.error.get(this.error.size()-1)));
             }
@@ -137,21 +141,83 @@ public class NMF {
         Log.v("NMFRun", String.format("Size of A: (%d, %d), Size of B(%d, %d), Size of C (%d, %d)", this.W2.countRows(), this.W2.countColumns(), this.H.countRows(), this.H.countColumns(), this.V2.countRows(), this.V2.countColumns()));
     }
 
-    // TODO: implement - high
+    // TODO: improve - high
     private void update(double min_const) {
+        // NOTE: Current implementation
         // Kullback-Leibler Multiplicative Update Rule
-        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H));
-        this.H = mul(this.H,divide( toPrimitive((this.W1.transpose().multiply(divide(this.V1,V1_est)))),
-                toPrimitive(this.W1.transpose().multiply(this.ones))));
-//                divide( toPrimitive((this.W1.transpose().multiply(divide(this.V1,toPrimitive(V1_est.add(min_const)))))),
-//                        toPrimitive(this.W1.transpose().multiply(this.ones))));
+        // Pre-allocating data
+        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.W1.countRows(), this.H.countColumns());
+        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
+        Primitive64Store denominator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
+        // Calculating the V1 estimate
+        this.W1.multiply(this.H, V1_estimate);
+        V1_estimate = toPrimitive(V1_estimate.add(min_const));
+        // Calculating the numerator
+        this.W1.transpose().multiply(divide(this.V1, V1_estimate), numerator);
+        // Calculating the denominator
+        this.W1.transpose().multiply(this.ones, denominator);
+//        denominator = toPrimitive(denominator.add(min_const));
+        // TODO: Check if the min_const add to denominator is needed
+        this.H = mul(this.H, (divide(numerator, denominator)));
+
+//        // Kullback-Leibler Multiplicative Update Rule
+//        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.f, this.n);
+//        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.k, this.n);
+//        for (int k = 0; k < this.k; k++) {
+//            this.W1.multiply(this.H, V1_estimate);
+//            this.W1.transpose().multiply(divide(this.V1, V1_estimate), numerator);
+//            double denominator_sum = sum(toPrimitive(this.W1.column(k)));
+//            for (int n = 0; n < this.n; n++) {
+//                double numerator_sum = numerator.get(k,n);
+//                this.H.set(k, n, this.H.get(k,n) * numerator_sum/denominator_sum);
+//            }
+//        }
+//        Log.v("NMFUpdate_out", String.format("Shapes: f=%d, e=%d, n=%d, k=%d" +
+//                        "\n\tV1: (%d,%d)" +
+//                        "\n\tW1: (%d,%d)" +
+//                        "\n\tH: (%d,%d)" +
+//                        "\n\tones: (%d,%d)" +
+//                        "\n\tnumerator: (%d,%d)" +
+//                        "\n\tdenominator: (%d,%d)" +
+//                        "\n\tV1 est: (%d,%d)", this.f, this.e, this.n, this.k, this.V1.countRows(),
+//                this.V1.countColumns(), this.W1.countRows(), this.W1.countColumns(),
+//                this.H.countRows(), this.H.countColumns(), this.ones.countRows(),
+//                this.ones.countColumns(), numerator.countRows(), numerator.countColumns(),
+//                denominator.countRows(), denominator.countColumns(), V1_estimate.countRows(),
+//                V1_estimate.countColumns()));
     }
 
-    // TODO: implement - high
+    // TODO: improve - high
     private void calcError() {
+        // NOTE: current implementation
         // TODO: see that this multiplication is matmul and not element wise
-        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H));
-        error.add(sum(toPrimitive(log(divide(this.V1, V1_est)).subtract(this.V1).add(V1_est))));
+        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H).add(this.MIN_CONST));
+        Primitive64Store deviation = toPrimitive(log(divide(this.V1, V1_est), 10));
+        error.add(sum(toPrimitive(deviation.add(V1_est.subtract(this.V1)))));
+//        error.add(sum(toPrimitive(this.V1.multiply(toPrimitive(log(divide(this.V1, V1_est)))).subtract(this.V1).add(V1_est))));
+
+
+//        // Clarity improvement
+//        // Pre-allocating data
+//        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
+//        Primitive64Store distribution = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
+//        Primitive64Store distribution_error = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
+//        // Calculating V1 estimate
+//        this.W1.multiply(this.H, V1_estimate);
+//        V1_estimate = toPrimitive(V1_estimate.add(Math.pow(10,-30)));
+//        // Calculating distribution
+//        distribution = mul(this.V1, log(divide(this.V1, V1_estimate)));
+//        // Calculating distribution error
+//        distribution_error = toPrimitive(this.V1.add(V1_estimate));
+//        // Calculating error
+//        this.error.add(sum(toPrimitive(distribution.subtract(distribution_error))));
+
+//        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
+//        this.W1.multiply(this.H, V1_estimate);
+//        V1_estimate = toPrimitive(V1_estimate.add(this.MIN_CONST));
+//        Primitive64Store dif = toPrimitive(V1_estimate.subtract(this.V1));
+//        Primitive64Store div_dif = log(divide(this.V1, V1_estimate), 10);
+//        error.add(sum(toPrimitive(this.V1.multiply(div_dif).add(dif))));
     }
 
     /* Data initialisation and loading methods */
@@ -163,7 +229,10 @@ public class NMF {
 
     private void initH() {
         // Creating the matrices
-        this.H = (Primitive64Store) Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Gamma(1.0, 1.0));
+        this.H = Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Gamma(1.0, 1.0));
+        this.H = toPrimitive(this.H.divide(max(abs(this.H))));
+        Log.e("NMF TEST", String.format("H max: %f, min: %f", max(abs(this.H)), min(abs(this.H))));
+//        this.H = (Primitive64Store) Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Poisson(1.0));
     }
 
     // TODO: implement - low
@@ -272,6 +341,30 @@ public class NMF {
             value = value + matrix.get(i);
         }
         return value;
+    }
+    // Get largest value in the matrix
+    private double max(Primitive64Store matrix) {
+        double ret = matrix.get(0);
+        for (long i = 0; i < matrix.size(); i++){
+            ret = Math.max(matrix.get(i), ret);
+        }
+        return ret;
+    }
+    // Get smallest value in the matrix
+    private double min(Primitive64Store matrix) {
+        double ret = matrix.get(0);
+        for (long i = 0; i < matrix.size(); i++){
+            ret = Math.min(matrix.get(i), ret);
+        }
+        return ret;
+    }
+    // Get absolute values of matrix
+    private Primitive64Store abs(Primitive64Store matrix) {
+        Primitive64Store ret = Primitive64Store.FACTORY.make(matrix.countRows(), matrix.countColumns());
+        for (long i = 0; i < matrix.size(); i++){
+            ret.set(i, Math.abs(matrix.get(i)));
+        }
+        return ret;
     }
 }
 
