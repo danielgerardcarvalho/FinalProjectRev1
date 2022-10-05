@@ -31,6 +31,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
+import com.androidplot.xy.XYPlot;
 import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -120,15 +121,17 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     /* Plotting */
+    private XYPlot annotated_plot;                      // TESTING - plot with axis
+    ArrayList<ImageView> imageViews;                    // list of active ui interfaces
     // plotting multi-thread
     private Thread mt_plotting_thread;
     private Runnable mt_plotting_runnable;              // multi-thread handler (runnable)
     private boolean mt_plotting_flag;                   // multi-thread status flag
-    ArrayList<ImageView> imageViews;                    // list of active ui interfaces
     private int plotting_update_interval;
     private boolean capture_plotting_flag;
     private boolean processing_plotting_flag;
     private boolean classifier_plotting_flag;
+
 
     /* UI Associated Model Import Settings */
     // Inputs - TODO: removing to reduce memory use
@@ -1020,8 +1023,6 @@ public class ScrollingActivity extends AppCompatActivity {
             }
         }
         cap_buffer.add(temp);
-        Log.v("AudioCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
-                "\n\tQueue location:%d", num_read, cap_buffer.size()));
     }
 
     private void readFileCaptureBuffer(){
@@ -1051,8 +1052,6 @@ public class ScrollingActivity extends AppCompatActivity {
             }
         }
         cap_buffer.add(temp);
-        Log.d("FileCapture", String.format("Read from internal buffer:\n\tAmount read:%d," +
-                "\n\tQueue location:%d", num_read, cap_buffer.size()));
     }
 
 
@@ -1114,7 +1113,6 @@ public class ScrollingActivity extends AppCompatActivity {
             }
             // Fetch data from the capture buffer queue
             byte[] temp = cap_buffer.remove(0);
-            // TODO: TESTING
             // Converting from bytes to respective capture format
             if (cap_format == AUDIO_FORMAT_INT16) {
                 proc_data = bytesToShort(temp, cap_format);
@@ -1127,12 +1125,12 @@ public class ScrollingActivity extends AppCompatActivity {
 //            proc_data = bytesToShort(temp, cap_format);
             // Normalising the capture data
             double[] norm_proc_data = norm(proc_data, max(abs(proc_data)));
-            Log.v("AudioProcessing", String.format("Conversion from Bytes:" +
-                    "\n\tInput from buffer: %d" +
-                    "\n\tOutput from byte conversion: %d" +
-                    "\n\tMax absolute value in buffer: %d" +
-                    "\n\tMax absolute value of normalised buffer: %f", cap_buffer_size, proc_data.length,
-                    max(abs(proc_data)), max(abs(norm_proc_data))));
+            Log.v("AudioProcessing", String.format("Processing iput:" +
+                    "\n\tInput buffer size: %d" +
+                    "\n\tByte converted input buffer size: %d" +
+                    "\n\tinput buffer max:%d, min:%f" +
+                    "\n\tnorm buffer max:%f, min:%f", cap_buffer_size, proc_data.length,
+                    max(proc_data), min(mul(proc_data, 1.0)), max(norm_proc_data), min(norm_proc_data)));
 
             // Perform STFT
             // TODO: (MEL) removed in mean-time
@@ -1188,7 +1186,10 @@ public class ScrollingActivity extends AppCompatActivity {
             spec_window_imag = getValuesInRange(fft.getFFTImag(), 0, proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
             double temp_scaler = proc_fft_size/2;
+            // TODO: Try and remove
             double [] temp_real_spec_window = abs(divide(spec_window_real, temp_scaler), divide(spec_window_imag, temp_scaler));
+//            double [] temp_real_spec_window = abs(spec_window_real, spec_window_imag);
+//            temp_real_spec_window = divide(temp_real_spec_window, temp_scaler);
             // Adding the window to the spectrogram
             for (int j = 0; j < proc_fft_size/2; j++) {
                 temp_spectrogram[i][j] = temp_real_spec_window[j];
@@ -1206,13 +1207,32 @@ public class ScrollingActivity extends AppCompatActivity {
         // Converting from double[][] to Primitive64Storage
         spectrogram = createMatrix(temp_spectrogram);
 
-        // Converting from amplitude to dB
-        double reference = min(spectrogram);
-        spectrogram = toPrimitive(ampToDB(spectrogram, reference).add(MIN_CONST));
+        // Scaling the spectrogram
+        spectrogram = pow(spectrogram, 2.0);
+        // Converting from amplitude to dB and transposing
+        double reference = min(abs(spectrogram));
+        spectrogram = toPrimitive(ampToDB(spectrogram, reference).transpose());
 
+        // Scaling the output to fit between 80 and MIN_CONST
+        spectrogram = scale(spectrogram, MIN_CONST, 80);
+//        Primitive64Store ret = Primitive64Store.FACTORY.make(spectrogram.countRows(),spectrogram.countColumns());
+//        double max = max(spectrogram);
+//        for (int i = 0; i < spectrogram.size(); i ++){
+//            ret.set(i, Math.max(spectrogram.get(i), max - 80));
+//        }
+//        spectrogram = ret.copy();
+
+//        // Threshold the minimum value to that 80dB from maximum
+//        double threshold = max(spectrogram) - 80;
+//        for (int i = 0; i < spectrogram.size(); i++) {
+//            spectrogram.set(i, Math.max(threshold, spectrogram.get(i)));
+//        }
+
+        // TODO: try and remove
         // Transposing the spectrogram to correct orientation, taking spectrogram to power of 2 for
         // noise resistance
-        spectrogram = pow(toPrimitive(spectrogram.transpose()), 2.0);
+//        spectrogram = toPrimitive(spectrogram.transpose());
+//        spectrogram = pow(toPrimitive(spectrogram.transpose()), 2.0);
 
         Log.v("AudioProcessing", String.format("STFT Summary:" +
                         "\n\tinput fft size (rows):\t\t%d" +
@@ -1221,8 +1241,12 @@ public class ScrollingActivity extends AppCompatActivity {
                         "\n\toutput num frames (cols):\t%d" +
                         "\nPre-calculated output sizes" +
                         "\n\tfft size (proc_fft_size/2):\t%d" +
-                        "\n\tnum windows (calculated):\t%d", proc_fft_size, proc_num_time_frames,
-                spectrogram.countRows(), spectrogram.countColumns(), proc_fft_size/2, num_windows));
+                        "\n\tnum windows (calculated):\t%d" +
+                        "\nValues of STFT" +
+                        "\n\tmax value:\t\t%f" +
+                        "\n\tmin value:\t\t%f", proc_fft_size, proc_num_time_frames,
+                spectrogram.countRows(), spectrogram.countColumns(), proc_fft_size/2, num_windows,
+                max(spectrogram), min(spectrogram)));
 
         return spectrogram;
     }
@@ -1622,10 +1646,18 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
-
     // Convert from amplitude values to dB values
     private Primitive64Store ampToDB(Primitive64Store matrix, double ref) {
-        return  toPrimitive(log(toPrimitive(matrix.divide(ref)), 10).multiply(20));
+        Primitive64Store temp = toPrimitive(log(toPrimitive(matrix.divide(ref)), 10).multiply(20));
+        return temp;
+    }
+    // Scale values inbetween a maximum and minimum, thresholding the minimum
+    private Primitive64Store scale(Primitive64Store matrix, double min, double max) {
+        double threshold_max = max(matrix) - max;
+        for (int i = 0; i < matrix.size(); i++){
+            matrix.set(i,  Math.max(matrix.get(i) - threshold_max, MIN_CONST));
+        }
+        return matrix;
     }
 
     // Convert from byte array to short []
@@ -1645,8 +1677,9 @@ public class ScrollingActivity extends AppCompatActivity {
 
         // TODO: CURRENT -works for recording, just not the data that I create in python
         ByteBuffer buffer = ByteBuffer.wrap(array);
-        buffer.order(ByteOrder.nativeOrder());
+//        buffer.order(ByteOrder.nativeOrder());
 //        buffer.order(ByteOrder.BIG_ENDIAN);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
         int count = 0;
         while(buffer.hasRemaining()){
             ret[count++] = buffer.getShort();
@@ -1826,6 +1859,14 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         return ret;
     }
+    // Element-wise multiplication between array and scalar
+    private double [] mul(short [] array, double scalar) {
+        double [] ret = new double [array.length];
+        for (int i = 0; i < array.length; i++) {
+            ret[i] = array[i] * scalar;
+        }
+        return ret;
+    }
     // Element-wise multiplication between arrays
     private double[] mul(double [] array1, double [] array2) {
         if (array1.length != array2.length){
@@ -1875,11 +1916,19 @@ public class ScrollingActivity extends AppCompatActivity {
     private double mean(Primitive64Store array) {
         return sum(array)/array.size();
     }
+    // Absolute of matrix
+    private double[] abs(Primitive64Store matrix){
+        double [] ret = new double [matrix.size()];
+        for (int i = 0; i < ret.length; i++) {
+            ret[i] = Math.abs(matrix.get(i));
+        }
+        return ret;
+    }
     // Absolute of complex array
     private double[] abs(double [] real, double [] imag) {
         double [] ret = new double[real.length];
         for(int i = 0; i < real.length; ++i) {
-            ret[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
+            ret[i] = Math.sqrt((real[i] * real[i]) + (imag[i] * imag[i]));
         }
         return ret;
     }
@@ -1905,6 +1954,13 @@ public class ScrollingActivity extends AppCompatActivity {
         double ret = matrix.get(0);
         for (long i = 0; i < matrix.size(); i++){
             ret = Math.min(matrix.get(i), ret);
+        }
+        return ret;
+    }
+    private double min(double [] array){
+        double ret = array[0];
+        for (int i = 0; i < array.length; i++) {
+            ret = Math.min(array[i], ret);
         }
         return ret;
     }

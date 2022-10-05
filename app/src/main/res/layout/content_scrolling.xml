@@ -615,6 +615,16 @@
             android:layout_width="match_parent"
             android:layout_height="26dp" />
 
+        <com.androidplot.xy.XYPlot
+            style="@style/APDefacto.Light"
+            android:id="@+id/plot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            ap:title="Annotated Timeline"
+            ap:domainTitle="time"
+            ap:rangeTitle="event classes"
+            ap:lineLabels="left|bottem"
+            ap:lineLabelRotationBottom="-45"/>
 
 
         <!--        <TextView-->

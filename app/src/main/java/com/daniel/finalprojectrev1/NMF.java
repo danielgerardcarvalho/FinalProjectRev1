@@ -83,8 +83,6 @@ public class NMF {
     public void start() {
         // Starts the classes operations
         this.operation_flag = true;
-        // Re-initialise the H matrix
-        initH();
         // Creating operation variables
         this.curr_iter_num = 0;
         // start nmf calculation
@@ -113,7 +111,6 @@ public class NMF {
     }
 
     /* Primary methods */
-    // TODO: implement - high
     private void run() {
         // TODO: could initialise several H matrices and use one that achieves best results
         //  or average the results between them. Will this really help? obviouse computation and
@@ -121,6 +118,9 @@ public class NMF {
 
         // Starting the computation loop
         // TODO: add error thresholding
+        // Re-initialising the H matrix
+        initH();
+
         while (curr_iter_num < this.iter_limit && operation_flag) {
             // Update the matrices
             update();
@@ -150,14 +150,15 @@ public class NMF {
         Primitive64Store denominator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
         // Calculating the V1 estimate
         this.W1.multiply(this.H, V1_estimate);
-        V1_estimate = toPrimitive(V1_estimate.add(MIN_CONST));
+//        V1_estimate = toPrimitive(V1_estimate.add(MIN_CONST));
         // Calculating the numerator
-        this.W1.transpose().multiply(divide(this.V1, V1_estimate), numerator);
+        (this.W1.transpose()).multiply(divide(this.V1, V1_estimate), numerator);
         // Calculating the denominator
-        this.W1.transpose().multiply(this.ones, denominator);
+        (this.W1.transpose()).multiply(this.ones, denominator);
 //        denominator = toPrimitive(denominator.add(min_const));
         // TODO: Check if the min_const add to denominator is needed
         this.H = mul(this.H, (divide(numerator, denominator)));
+
 //        // Kullback-Leibler Multiplicative Update Rule
 //        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.f, this.n);
 //        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.k, this.n);
@@ -239,8 +240,9 @@ public class NMF {
     private void loadV1(double [][] data) {}
 
     public void loadV1(Primitive64Store data) {
-        this.V1 = data.copy();
-        this.V1 = toPrimitive(this.V1.divide(sum(this.V1)));
+        this.V1 = toPrimitive(data.divide(sum(data)));
+//        this.V1 = data.copy();
+//        this.V1 = toPrimitive(this.V1.divide(sum(this.V1)));
     }
 
     public void loadW1(double [][] data) {
