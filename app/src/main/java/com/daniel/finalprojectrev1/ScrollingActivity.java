@@ -31,8 +31,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
-import com.androidplot.xy.XYPlot;
 import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
+import com.github.mikephil.charting.charts.ScatterChart;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.ScatterData;
+import com.github.mikephil.charting.data.ScatterDataSet;
+import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
+import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -121,7 +129,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     /* Plotting */
-    private XYPlot annotated_plot;                      // TESTING - plot with axis
+    private AnnotatedTimeline annotated_plot;           // TESTING - plot with axis
     ArrayList<ImageView> imageViews;                    // list of active ui interfaces
     // plotting multi-thread
     private Thread mt_plotting_thread;
@@ -1546,7 +1554,9 @@ public class ScrollingActivity extends AppCompatActivity {
             imageViews.add(findViewById(R.id.imageView1));
         }
         if (classifier_plotting_flag) {
-            imageViews.add(findViewById(R.id.imageView2));
+//            imageViews.add(findViewById(R.id.imageView2));
+            // TODO: implement improved plotting features
+            annotated_plot = new AnnotatedTimeline(findViewById(R.id.plot));
         }
 
         // TODO: Start Plotting Thread Runnable
@@ -1616,17 +1626,9 @@ public class ScrollingActivity extends AppCompatActivity {
         // Classifier output plot
         if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
             Primitive64Store temp = classifier_buffer.remove(0);
-//        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
-//        for (int i = temp.rows-1; i >= 0; i--){
-//            for (int j = 0; j < temp.cols; j++) {
-//                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
-//            }
-//        }
-//        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
-//        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
-            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
-//            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
-            plottingUpdate(sp_view_obj, curr_image_view);
+//            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
+//            plottingUpdate(sp_view_obj, curr_image_view);
+            annotated_plot.updatePlot(temp);
         }
     }
 
