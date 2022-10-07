@@ -112,7 +112,8 @@ public class AnnotatedTimeline {
             dataSets.add(new ScatterDataSet(dataPoints.get(i), this.event_classes[i]));
             dataSets.get(i).setScatterShape(ScatterChart.ScatterShape.SQUARE);
             dataSets.get(i).setColor(ColorTemplate.COLORFUL_COLORS[i]);
-            dataSets.get(i).setScatterShapeSize(35f);
+//            dataSets.get(i).setScatterShapeSize(35f);
+            dataSets.get(i).setScatterShapeSize(15f);
             dataSets.get(i).setDrawValues(false);
         }
 
