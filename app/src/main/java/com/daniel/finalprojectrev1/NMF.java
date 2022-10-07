@@ -1,12 +1,12 @@
 package com.daniel.finalprojectrev1;
 
+import android.app.Activity;
 import android.util.Log;
+import android.widget.TextView;
 
 import org.ojalgo.matrix.store.MatrixStore;
 import org.ojalgo.matrix.store.Primitive64Store;
 import org.ojalgo.random.Gamma;
-import org.ojalgo.random.Poisson;
-import org.ojalgo.random.process.GaussianField;
 
 import java.util.ArrayList;
 
@@ -56,6 +56,10 @@ public class NMF {
     // operation flag
     private boolean operation_flag;
 
+    // UI update variables
+    private Activity activity;
+    private TextView progress_update_indicator;
+
     public NMF(int f, int n, int e, int k, int iter_limit){
         // Initialising the configuration settings
         this.f = f;
@@ -77,6 +81,10 @@ public class NMF {
         this.operation_flag = false;
         // Clearing the current iteration number
         this.curr_iter_num = 0;
+
+        // Progress indicator updater
+        activity = null;
+        progress_update_indicator = null;
     }
 
     /* Control methods */
@@ -128,6 +136,11 @@ public class NMF {
             calcError();
             // Progress display, giving error and current iteration number and total iterations
             if (curr_iter_num % 1 == 0){
+                if (activity != null && progress_update_indicator != null) {
+                    activity.runOnUiThread(() -> progress_update_indicator.setText(
+                            activity.getText(R.string.progress_indicator_string) +
+                                    String.format("\t%d / %d", curr_iter_num + 1, iter_limit)));
+                }
                 Log.v("ClassifierNMF", String.format("Iteration: %d / %d, error: %f",
                         curr_iter_num, this.iter_limit, this.error.get(this.error.size()-1)));
             }
@@ -257,6 +270,12 @@ public class NMF {
         this.final_training_error = training_error;
     }
 
+    /* Set methods */
+    public void setProgressUpdateVars(Activity act, TextView textV) {
+        this.activity = act;
+        this.progress_update_indicator = textV;
+    }
+
     /* Get methods */
     public Primitive64Store getV1(){
         return this.V1;
@@ -272,6 +291,12 @@ public class NMF {
     }
     public Primitive64Store getH(){
         return this.H;
+    }
+    public int getCurr_iter_num() {
+        return curr_iter_num;
+    }
+    public int getIter_limit() {
+        return iter_limit;
     }
 
     /* Helpers */

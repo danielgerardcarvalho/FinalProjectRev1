@@ -56,7 +56,8 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private ActivityScrollingBinding binding;
 
-    /* General Operation */ //TODO: maybe change some of these to individual sub-systems later?
+    /* General Operation */
+    //TODO: maybe change some of these to individual sub-systems later?
     private boolean system_flag;
     private final double MIN_CONST = Math.pow(10, -20);
 
@@ -102,9 +103,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
     private short [] proc_data;
-    // TODO: ojalgo NEEDS CONVERT - STFT output buffer (Normal large matrix)
     private ArrayList<Primitive64Store> proc_buffer;
-//    private ArrayList<DenseMatrix> proc_buffer;
 
     /* Classifier */
     // classifier constants
@@ -120,7 +119,10 @@ public class ScrollingActivity extends AppCompatActivity {
 
     /* Plotting */
     private AnnotatedTimeline annotated_plot;           // TESTING - plot with axis
-    ArrayList<ImageView> imageViews;                    // list of active ui interfaces
+    private ArrayList<ImageView> plotting_image_views;  // list of active ui interfaces
+    private ArrayList<TextView> plotting_text_views;    // list if active ui text views
+    private TextView progress_indicator_view;           // text view for progress indicator
+
     // plotting multi-thread
     private Thread mt_plotting_thread;
     private Runnable mt_plotting_runnable;              // multi-thread handler (runnable)
@@ -132,14 +134,6 @@ public class ScrollingActivity extends AppCompatActivity {
 
 
     /* UI Associated Model Import Settings */
-    // Inputs - TODO: removing to reduce memory use
-//    private TextView model_filename_view;
-//    private EditText num_class_events_text;
-//    private EditText clip_len_text;
-//    private EditText num_overlaps_text;
-//    private EditText snr_range_min_text;
-//    private EditText snr_range_max_text;
-//    private EditText num_training_sample_text;
     // Values
     private int model_num_class_events;
     private int model_clip_len;
@@ -150,11 +144,6 @@ public class ScrollingActivity extends AppCompatActivity {
     private int model_num_inter_comp;
 
     /* UI Associated Capture Settings */
-    // Inputs - // TODO: removing to reduce memory use
-//    private EditText cap_sample_rate_input;
-//    private EditText cap_time_interval_input;
-//    private Button cap_file_import_select_input;
-//    private Spinner cap_format_input;
     // Values
     private int cap_sample_rate;
     private int cap_time_interval;
@@ -165,13 +154,6 @@ public class ScrollingActivity extends AppCompatActivity {
     private int cap_format;
 
     /* UI Associated Processing Settings */
-    // Inputs - // TODO: removing to reduce memory use
-//    private EditText proc_fft_size_input;
-//    private EditText proc_sample_rate_input;
-//    private EditText proc_num_time_frames_input;
-//    private EditText proc_resolution_input;
-//    private EditText proc_window_time_input;
-//    private EditText proc_hop_time_input;
     // Values
     private int proc_fft_size;
     private int proc_sample_rate;
@@ -181,11 +163,6 @@ public class ScrollingActivity extends AppCompatActivity {
     private double proc_hop_time;
 
     /* UI Associated Classifier Settings */
-    // Inputs - // TODO: removing to reduce memory use
-//    private EditText classifier_fft_size_input;
-//    private EditText classifier_num_classes_input;
-//    private EditText classifier_num_inter_comp_input;
-//    private EditText classifier_num_iters_input;
     // Values
     private int classifier_fft_size;
     private int classifier_num_classes;
@@ -328,27 +305,21 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Change icon image
                 fab.setImageResource(android.R.drawable.ic_media_pause);
 
-                // Configure capture system
+                /* Starting the system */
+                // Configuring and starting the capture sub-system
                 configureCapture();
+                startCapture();
                 // Configure processing system
                 configureProcessing();
                 // Configure classifier system
                 configureClassifier(model_filename_view, model_filename_marker_view);
-//                // Configure monitoring system
-//                configureMonitor();
-
 
                 // Starting the sub-system threads
-                startCapture();
+//                startCapture();
                 startProcessing();
                 startClassifier();
 
-                // Display results
-//                tempTestPlot(image);
-//                tempCapPlot(image);
-//                tempProcPlot(image);
-//                tempClassifierPlot(image);
-
+                // Start plotting sub-system
                 capture_plotting_flag = false;
                 processing_plotting_flag = true;
                 classifier_plotting_flag = true;
@@ -1056,7 +1027,6 @@ public class ScrollingActivity extends AppCompatActivity {
     // Processing
     private void configureProcessing() {
         /* Configures processing variables before the start of any sub-systems*/
-
         // Input variable initialisation
         proc_data = null;
         // Output buffer clearing / initialisation
@@ -1385,6 +1355,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 classifier_num_inter_comp,
                 classifier_num_iters
         );
+        nmf.setProgressUpdateVars(this, progress_indicator_view);
         // Loading Dictionaries
         Log.v("Classifier", "Loading imported model dictionaries...");
         nmf.loadW1(classifier_imported_nmf_model.W1);
@@ -1584,7 +1555,8 @@ public class ScrollingActivity extends AppCompatActivity {
     /* Plotting */
     private void configurePlotting() {
         // Configure the plotting sub-system
-        imageViews = new ArrayList<>();
+        plotting_image_views = new ArrayList<>();
+        plotting_text_views = new ArrayList<>();
         // Enable the multi-thread flags
         mt_plotting_flag = true;
         // Configure update interval
@@ -1592,15 +1564,21 @@ public class ScrollingActivity extends AppCompatActivity {
 
         // TODO: implement requested plots and have live updates
         if (capture_plotting_flag){
-            imageViews.add(findViewById(R.id.imageView0));
+            plotting_image_views.add(findViewById(R.id.imageView0));
+            TextView temp = findViewById(R.id.view_plotting_time_domain);
+            temp.setVisibility(TextView.VISIBLE);
         }
-        if (processing_plotting_flag ) {
-            imageViews.add(findViewById(R.id.imageView1));
+        if (processing_plotting_flag) {
+            plotting_image_views.add(findViewById(R.id.imageView1));
+            TextView temp = findViewById(R.id.view_plotting_spectrogram);
+            temp.setVisibility(TextView.VISIBLE);
+
         }
         if (classifier_plotting_flag) {
-            // Old implementation
-//            imageViews.add(findViewById(R.id.imageView2));
-            // New Annotated timeline
+            progress_indicator_view = findViewById(R.id.view_progress_indicator);
+            TextView temp = findViewById(R.id.view_plotting_timeline);
+            temp.setVisibility(TextView.VISIBLE);
+//            plotting_image_views.add(findViewById(R.id.imageView2));
             annotated_plot = new AnnotatedTimeline(findViewById(R.id.plot));
         }
 
@@ -1642,10 +1620,8 @@ public class ScrollingActivity extends AppCompatActivity {
                 }
                 iter++;
             }
-
-            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
-
-//            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+            // Update the UI elements
+            BitMapView sp_view_obj = new BitMapView(this, temp, plotting_image_views.get(curr_image_view).getWidth());
             plottingUpdate(sp_view_obj, curr_image_view);
             curr_image_view++;
         }
@@ -1663,22 +1639,23 @@ public class ScrollingActivity extends AppCompatActivity {
 //        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
             Primitive64Store val = toPrimitive(invert_temp.divide(max(invert_temp)));
 //            Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
-            BitMapView sp_view_obj = new BitMapView(this, val, imageViews.get(curr_image_view).getWidth());
-//            imageViews.get(curr_image_view).setImageBitmap(sp_view_obj.bmp);
+            BitMapView sp_view_obj = new BitMapView(this, val, plotting_image_views.get(curr_image_view).getWidth());
             plottingUpdate(sp_view_obj, curr_image_view);
             curr_image_view++;
         }
         // Classifier output plot
         if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
             Primitive64Store temp = classifier_buffer.remove(0);
-//            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
+//            BitMapView sp_view_obj = new BitMapView(this, temp, plotting_image_views.get(curr_image_view).getWidth());
 //            plottingUpdate(sp_view_obj, curr_image_view);
+            // TODO: add the iterator the the output string
+//            runOnUiThread(() -> progress_indicator_view.setText(getText(R.string.progress_indicator_string) + ));
             annotated_plot.updatePlot(this, temp);
         }
     }
 
     private void plottingUpdate(BitMapView bitmap_obj, int curr_image_view){
-        runOnUiThread(() -> imageViews.get(curr_image_view).setImageBitmap(bitmap_obj.bmp));
+        runOnUiThread(() -> plotting_image_views.get(curr_image_view).setImageBitmap(bitmap_obj.bmp));
     }
 
     /* Helpers */
@@ -1698,7 +1675,7 @@ public class ScrollingActivity extends AppCompatActivity {
         Primitive64Store temp = toPrimitive(log(toPrimitive(matrix.divide(ref)), 10).multiply(20));
         return temp;
     }
-    // Scale values inbetween a maximum and minimum, thresholding the minimum
+    // Scale values in-between a maximum and minimum, thresholding the minimum
     private Primitive64Store scale(Primitive64Store matrix, double min, double max) {
         double threshold_max = max(matrix) - max;
         for (int i = 0; i < matrix.size(); i++){

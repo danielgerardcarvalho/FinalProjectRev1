@@ -99,6 +99,7 @@
     <string name="classifier_settings_title">\tClassifier Settings</string>
     <string name="classification_settings_title">\tClassification Settings</string>
     <string name="model_filename_title">\tModel Import Filename:</string>
+    <string name="plotting_title">\tOutput Plots</string>
 
     <!-- Import Settings-->
     <string name="model_num_event_classes">\tNumber of event classes:</string>
@@ -128,6 +129,11 @@
     <string name="classifier_num_classes">\tNumber of detectable classes:</string>
     <string name="classifier_num_inter_comp">\tNumber of internal components:</string>
     <string name="classifier_num_iters">\tNumber of internal iterations:</string>
+    <!-- Plotting label -->
+    <string name="progress_indicator_string">Detection progress: </string>
+    <string name="plotting_time_domain">\tTime Domain Audio:</string>
+    <string name="plotting_spectrogram">\tSpectrogram:</string>
+    <string name="plotting_annotated_timeline">\tAnnotated Event Timeline:</string>
 
     <!-- Preference Titles -->
     <string name="messages_header">Messages</string>
