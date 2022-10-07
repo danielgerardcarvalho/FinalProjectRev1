@@ -81,7 +81,6 @@ public class NMF {
         this.operation_flag = false;
         // Clearing the current iteration number
         this.curr_iter_num = 0;
-
         // Progress indicator updater
         activity = null;
         progress_update_indicator = null;

@@ -1462,6 +1462,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
+
     // Result display
     // TODO: deprecated - moved to dedicated plotting sub system - remove
     private void tempTestPlot(ImageView image){
