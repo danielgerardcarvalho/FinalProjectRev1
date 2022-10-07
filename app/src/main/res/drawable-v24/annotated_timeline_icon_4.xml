@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:name="@+id/annotated_timeline_icon_4"
+    android:width="30dp"
+    android:height="30dp"
+    android:viewportWidth="30"
+    android:viewportHeight="30">
+    <path
+        android:name="primary"
+        android:fillColor="@color/annotation_4"
+        android:pathData="M14.5,0h1v30h-1z" />
+</vector>

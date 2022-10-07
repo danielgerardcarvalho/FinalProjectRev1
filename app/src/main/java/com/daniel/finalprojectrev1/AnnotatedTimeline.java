@@ -1,15 +1,18 @@
 package com.daniel.finalprojectrev1;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 
 import androidx.core.content.ContextCompat;
 
+import com.github.mikephil.charting.charts.ScatterChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.ScatterData;
+import com.github.mikephil.charting.data.ScatterDataSet;
 import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 
@@ -92,6 +95,13 @@ public class AnnotatedTimeline {
     public void updatePlot(Context context, Primitive64Store data) {
         // Creating a wrapper for data to be plotted
         ArrayList<ArrayList<Entry>> dataPoints = new ArrayList<>();
+        ArrayList<Drawable> icon_array = new ArrayList<>();
+        icon_array.add(ContextCompat.getDrawable(context, R.drawable.annotated_timeline_icon_0));
+        icon_array.add(ContextCompat.getDrawable(context, R.drawable.annotated_timeline_icon_1));
+        icon_array.add(ContextCompat.getDrawable(context, R.drawable.annotated_timeline_icon_2));
+        icon_array.add(ContextCompat.getDrawable(context, R.drawable.annotated_timeline_icon_3));
+        icon_array.add(ContextCompat.getDrawable(context, R.drawable.annotated_timeline_icon_4));
+
 
         // Populating the wrappers
         for (int i = 0; i < data.countRows(); i++) {
@@ -101,7 +111,7 @@ public class AnnotatedTimeline {
                 // Converting data to appropriate form
                 if (data.get(i, j) != 0) {
                     Entry temp = new Entry((int) (data.get(i, j) * j), (float) (i + 0.5));
-                    temp.setIcon(ContextCompat.getDrawable(context, R.drawable.annotated_timeline_icon));
+                    temp.setIcon(icon_array.get(i));
                     temp_entry.add(temp);
 //                    temp_entry.add(new Entry((int) (data.get(i, j) * j),  (float) (i + 0.5)));
                 }
@@ -116,9 +126,25 @@ public class AnnotatedTimeline {
 
             dataSets.get(i).setDrawIcons(true);
 
-            dataSets.get(i).setScatterShape(ScatterChart.ScatterShape.SQUARE);
-            dataSets.get(i).setColor(ColorTemplate.COLORFUL_COLORS[i]);
-            dataSets.get(i).setScatterShapeSize(10f);
+//            dataSets.get(i).setScatterShape(ScatterChart.ScatterShape.SQUARE);
+            switch (i){
+                case 0:
+                    dataSets.get(i).setColor(ContextCompat.getColor(context, R.color.annotation_0));
+                    break;
+                case 1:
+                    dataSets.get(i).setColor(ContextCompat.getColor(context, R.color.annotation_1));
+                    break;
+                case 2:
+                    dataSets.get(i).setColor(ContextCompat.getColor(context, R.color.annotation_2));
+                    break;
+                case 3:
+                    dataSets.get(i).setColor(ContextCompat.getColor(context, R.color.annotation_3));
+                    break;
+                case 4:
+                    dataSets.get(i).setColor(ContextCompat.getColor(context, R.color.annotation_4));
+                    break;
+            }
+            dataSets.get(i).setScatterShapeSize(0.25f);
             dataSets.get(i).setDrawValues(false);
         }
 

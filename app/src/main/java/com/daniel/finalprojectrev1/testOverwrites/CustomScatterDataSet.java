@@ -20,7 +20,7 @@ import com.github.mikephil.charting.utils.ColorTemplate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ScatterDataSet extends LineScatterCandleRadarDataSet<Entry> implements IScatterDataSet {
+public class CustomScatterDataSet extends LineScatterCandleRadarDataSet<Entry> implements IScatterDataSet {
 
     /**
      * the size the scattershape will have, in density pixels
@@ -45,7 +45,7 @@ public class ScatterDataSet extends LineScatterCandleRadarDataSet<Entry> impleme
      */
     private int mScatterShapeHoleColor = ColorTemplate.COLOR_NONE;
 
-    public ScatterDataSet(List<Entry> yVals, String label) {
+    public CustomScatterDataSet(List<Entry> yVals, String label) {
         super(yVals, label);
     }
 
@@ -55,12 +55,12 @@ public class ScatterDataSet extends LineScatterCandleRadarDataSet<Entry> impleme
         for (int i = 0; i < mValues.size(); i++) {
             entries.add(mValues.get(i).copy());
         }
-        ScatterDataSet copied = new ScatterDataSet(entries, getLabel());
+        CustomScatterDataSet copied = new CustomScatterDataSet(entries, getLabel());
         copy(copied);
         return copied;
     }
 
-    protected void copy(ScatterDataSet scatterDataSet) {
+    protected void copy(CustomScatterDataSet scatterDataSet) {
         super.copy(scatterDataSet);
         scatterDataSet.mShapeSize = mShapeSize;
         scatterDataSet.mShapeRenderer = mShapeRenderer;
@@ -89,7 +89,7 @@ public class ScatterDataSet extends LineScatterCandleRadarDataSet<Entry> impleme
      *
      * @param shape
      */
-    public void setScatterShape(ScatterChart.ScatterShape shape) {
+    public void setScatterShape(CustomScatterChart.ScatterShape shape) {
         mShapeRenderer = getRendererForShape(shape);
     }
 
@@ -137,7 +137,7 @@ public class ScatterDataSet extends LineScatterCandleRadarDataSet<Entry> impleme
         return mScatterShapeHoleColor;
     }
 
-    public static IShapeRenderer getRendererForShape(ScatterChart.ScatterShape shape) {
+    public static IShapeRenderer getRendererForShape(CustomScatterChart.ScatterShape shape) {
 
         switch (shape) {
             case CUSTOM:

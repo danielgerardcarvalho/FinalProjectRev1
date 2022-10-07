@@ -5,17 +5,17 @@ import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
 
 import java.util.List;
 
-public class ScatterData extends BarLineScatterCandleBubbleData<IScatterDataSet> {
+public class CustomScatterData extends BarLineScatterCandleBubbleData<IScatterDataSet> {
 
-    public ScatterData() {
+    public CustomScatterData() {
         super();
     }
 
-    public ScatterData(List<IScatterDataSet> dataSets) {
+    public CustomScatterData(List<IScatterDataSet> dataSets) {
         super(dataSets);
     }
 
-    public ScatterData(ScatterDataSet... dataSets) {
+    public CustomScatterData(CustomScatterDataSet... dataSets) {
         super(dataSets);
     }
 

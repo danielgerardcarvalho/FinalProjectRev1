@@ -10,5 +10,10 @@
     <color name="heading_0">#FF212529</color>
     <color name="heading_1">#FF343A40</color>
     <color name="heading_2">#FF6C757D</color>
-    <color name="annotation">#3DDC84</color>
+    <!-- Annotation Icon Colours -->
+    <color name="annotation_0">#00FFC5</color>
+    <color name="annotation_1">#ADF5FF</color>
+    <color name="annotation_2">#0075A2</color>
+    <color name="annotation_3">#481620</color>
+    <color name="annotation_4">#D55672</color>
 </resources>

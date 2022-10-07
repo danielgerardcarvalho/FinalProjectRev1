@@ -8,17 +8,17 @@ import com.github.mikephil.charting.data.ScatterData;
 import com.github.mikephil.charting.interfaces.dataprovider.ScatterDataProvider;
 import com.github.mikephil.charting.renderer.ScatterChartRenderer;
 
-public class ScatterChart extends BarLineChartBase<ScatterData> implements ScatterDataProvider {
+public class CustomScatterChart extends BarLineChartBase<ScatterData> implements ScatterDataProvider {
 
-    public ScatterChart(Context context) {
+    public CustomScatterChart(Context context) {
         super(context);
     }
 
-    public ScatterChart(Context context, AttributeSet attrs) {
+    public CustomScatterChart(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
-    public ScatterChart(Context context, AttributeSet attrs, int defStyle) {
+    public CustomScatterChart(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
     }
 
@@ -64,8 +64,8 @@ public class ScatterChart extends BarLineChartBase<ScatterData> implements Scatt
             return shapeIdentifier;
         }
 
-        public static ScatterChart.ScatterShape[] getAllDefaultShapes() {
-            return new ScatterChart.ScatterShape[]{CUSTOM, SQUARE, CIRCLE, TRIANGLE, CROSS, X, CHEVRON_UP, CHEVRON_DOWN};
+        public static CustomScatterChart.ScatterShape[] getAllDefaultShapes() {
+            return new CustomScatterChart.ScatterShape[]{CUSTOM, SQUARE, CIRCLE, TRIANGLE, CROSS, X, CHEVRON_UP, CHEVRON_DOWN};
         }
     }
 }

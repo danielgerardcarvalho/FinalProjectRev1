@@ -1463,6 +1463,10 @@ public class ScrollingActivity extends AppCompatActivity {
                         event_active = false;
                         if (curr_len < min_len) {
                             for (int k = 0; k < curr_len; k++){
+                                if (j - curr_len + k > V2_output.countColumns() ||
+                                    j - curr_len + k < 0){
+                                    continue;
+                                }
                                 V2_output.set(i, j - curr_len + k, 0);
                             }
                         }
@@ -1595,7 +1599,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         if (classifier_plotting_flag) {
             // Old implementation
-            imageViews.add(findViewById(R.id.imageView2));
+//            imageViews.add(findViewById(R.id.imageView2));
             // New Annotated timeline
             annotated_plot = new AnnotatedTimeline(findViewById(R.id.plot));
         }
@@ -1667,8 +1671,8 @@ public class ScrollingActivity extends AppCompatActivity {
         // Classifier output plot
         if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
             Primitive64Store temp = classifier_buffer.remove(0);
-            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
-            plottingUpdate(sp_view_obj, curr_image_view);
+//            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
+//            plottingUpdate(sp_view_obj, curr_image_view);
             annotated_plot.updatePlot(this, temp);
         }
     }
