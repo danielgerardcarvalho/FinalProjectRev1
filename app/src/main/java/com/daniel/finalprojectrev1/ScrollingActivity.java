@@ -11,7 +11,6 @@ import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.HandlerThread;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -32,15 +31,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
 import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
-import com.github.mikephil.charting.charts.ScatterChart;
-import com.github.mikephil.charting.components.Legend;
-import com.github.mikephil.charting.components.XAxis;
-import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.data.ScatterData;
-import com.github.mikephil.charting.data.ScatterDataSet;
-import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
-import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -89,7 +79,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     private static final int AUDIO_MIN_FORMAT_SIZE = 1;
-    private final int CAP_QUEUE_SIZE = 2;
+    private final int CAP_QUEUE_SIZE = 5;
     // input format options
     private static final String UI_AUDIO_FORMAT_INT16 = "int16";
     private static final String UI_AUDIO_FORMAT_FLOAT = "float";
@@ -106,7 +96,7 @@ public class ScrollingActivity extends AppCompatActivity {
     /* Audio Pre-Processing */
     // processing constants
     private final int HANN = 0;
-    private final int PROC_QUEUE_SIZE = 2;
+    private final int PROC_QUEUE_SIZE = 3;
     // processing multi-threading
     private Thread mt_processing_thread;
     private Runnable mt_audio_processing_runnable;
@@ -1425,12 +1415,62 @@ public class ScrollingActivity extends AppCompatActivity {
             double V2_mean = mean(V2_output);
             double norm_modifier = 1.8;
             for (int i = 0; i < V2_output.size(); i++) {
-                if ((V2_mean * norm_modifier) >= V2_output.get(i)){
+                if ((V2_mean * norm_modifier) >= V2_output.get(i)) {
                     V2_output.set(i, 0);
                 } else {
-                    V2_output.set(i,1);
+                    V2_output.set(i, 1);
                 }
             }
+            // Outlier Removal and Correction
+            // Adding fillers for small gaps in annotations
+            int min_len = 3;
+            int curr_len = 0;
+            boolean event_inactive = false;
+            for (int i = 0; i < V2_output.countRows(); i++){
+                for (int j = 0; j < V2_output.countColumns(); j++) {
+                    if (V2_output.get(i, j) == 0 && !event_inactive) {
+                        event_inactive = true;
+                        curr_len++;
+                    }
+                    else if (V2_output.get(i, j) == 0 && event_inactive) {
+                            curr_len++;
+                    }
+                    else if (V2_output.get(i, j) == 1 && event_inactive) {
+                        event_inactive = false;
+                        if (curr_len < min_len) {
+                            for (int k = 0; k < curr_len; k++) {
+                                V2_output.set(i, j - curr_len + k, 1);
+                            }
+                        }
+                        curr_len = 0;
+                    }
+                }
+            }
+            // Removing outliers from annotations
+            min_len = 3;
+            curr_len = 0;
+            boolean event_active = false;
+            for (int i = 0; i < V2_output.countRows(); i++) {
+                for (int j = 0; j < V2_output.countColumns(); j++) {
+                    if (V2_output.get(i, j) == 1 && !event_active) {
+                        event_active = true;
+                        curr_len++;
+                    }
+                    else if (V2_output.get(i, j) == 1 && event_active) {
+                        curr_len++;
+                    }
+                    else if (V2_output.get(i, j) == 0 && event_active) {
+                        event_active = false;
+                        if (curr_len < min_len) {
+                            for (int k = 0; k < curr_len; k++){
+                                V2_output.set(i, j - curr_len + k, 0);
+                            }
+                        }
+                        curr_len = 0;
+                    }
+                }
+            }
+
             // Check if processing buffer is full
             while (classifier_buffer.size() == CLASSIFIER_QUEUE_SIZE){
                 try {
@@ -1554,8 +1594,9 @@ public class ScrollingActivity extends AppCompatActivity {
             imageViews.add(findViewById(R.id.imageView1));
         }
         if (classifier_plotting_flag) {
-//            imageViews.add(findViewById(R.id.imageView2));
-            // TODO: implement improved plotting features
+            // Old implementation
+            imageViews.add(findViewById(R.id.imageView2));
+            // New Annotated timeline
             annotated_plot = new AnnotatedTimeline(findViewById(R.id.plot));
         }
 
@@ -1626,9 +1667,9 @@ public class ScrollingActivity extends AppCompatActivity {
         // Classifier output plot
         if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
             Primitive64Store temp = classifier_buffer.remove(0);
-//            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
-//            plottingUpdate(sp_view_obj, curr_image_view);
-            annotated_plot.updatePlot(temp);
+            BitMapView sp_view_obj = new BitMapView(this, temp, imageViews.get(curr_image_view).getWidth());
+            plottingUpdate(sp_view_obj, curr_image_view);
+            annotated_plot.updatePlot(this, temp);
         }
     }
 

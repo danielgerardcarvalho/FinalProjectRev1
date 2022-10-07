@@ -1,22 +1,21 @@
 package com.daniel.finalprojectrev1;
 
+import android.content.Context;
 import android.view.View;
 
-import com.github.mikephil.charting.charts.ScatterChart;
+import androidx.core.content.ContextCompat;
+
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.ScatterData;
-import com.github.mikephil.charting.data.ScatterDataSet;
 import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 
 import org.ojalgo.matrix.store.Primitive64Store;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class AnnotatedTimeline {
     private ScatterChart plot;
@@ -47,7 +46,7 @@ public class AnnotatedTimeline {
         plot.getDescription().setEnabled(false);
         plot.setDrawGridBackground(false);
         plot.setTouchEnabled(false);
-        plot.setMaxVisibleValueCount(0);
+        plot.setMaxVisibleValueCount((int)(1000000));
 
 //        // below line is use to disable the description
 //        // of our scatter plot.
@@ -90,7 +89,7 @@ public class AnnotatedTimeline {
         l.setXOffset(5f);
     }
 
-    public void updatePlot(Primitive64Store data) {
+    public void updatePlot(Context context, Primitive64Store data) {
         // Creating a wrapper for data to be plotted
         ArrayList<ArrayList<Entry>> dataPoints = new ArrayList<>();
 
@@ -101,7 +100,10 @@ public class AnnotatedTimeline {
             for (int j = 0; j < data.countColumns(); j++) {
                 // Converting data to appropriate form
                 if (data.get(i, j) != 0) {
-                    temp_entry.add(new Entry((int) (data.get(i, j) * j),  (float) (i + 0.5)));
+                    Entry temp = new Entry((int) (data.get(i, j) * j), (float) (i + 0.5));
+                    temp.setIcon(ContextCompat.getDrawable(context, R.drawable.annotated_timeline_icon));
+                    temp_entry.add(temp);
+//                    temp_entry.add(new Entry((int) (data.get(i, j) * j),  (float) (i + 0.5)));
                 }
             }
             dataPoints.add(temp_entry);
@@ -109,19 +111,19 @@ public class AnnotatedTimeline {
         // Create a dataset, and configure the properties
         ArrayList<ScatterDataSet> dataSets = new ArrayList<>();
         for (int i = 0; i < data.countRows(); i++) {
+            // Loadingthe data into a dataset
             dataSets.add(new ScatterDataSet(dataPoints.get(i), this.event_classes[i]));
+
+            dataSets.get(i).setDrawIcons(true);
+
             dataSets.get(i).setScatterShape(ScatterChart.ScatterShape.SQUARE);
             dataSets.get(i).setColor(ColorTemplate.COLORFUL_COLORS[i]);
-//            dataSets.get(i).setScatterShapeSize(35f);
-            dataSets.get(i).setScatterShapeSize(15f);
+            dataSets.get(i).setScatterShapeSize(10f);
             dataSets.get(i).setDrawValues(false);
         }
 
         // Populating the dataset with data
-        ArrayList<IScatterDataSet> scatterDataSets = new ArrayList<>();
-        for (int i = 0; i < dataSets.size(); i++) {
-            scatterDataSets.add(dataSets.get(i));
-        }
+        ArrayList<IScatterDataSet> scatterDataSets = new ArrayList<>(dataSets);
         ScatterData plot_data = new ScatterData(scatterDataSets);
         plot.setData(plot_data);
         plot.invalidate();
