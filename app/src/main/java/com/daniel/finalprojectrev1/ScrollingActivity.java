@@ -113,7 +113,8 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
     private boolean mt_classifier_flag;                 // multi-thread status flag
     private NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
-    private Primitive64Store classifier_data;                // classifier input
+    private Primitive64Store classifier_data_prev;      // classifier input (previous) used for plotting
+    private Primitive64Store classifier_data;           // classifier input
     private ArrayList<Primitive64Store> classifier_buffer;   // classifier output buffer
 
 
@@ -1323,6 +1324,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         // Input variable clearing / initialisation
         classifier_data = null;
+        classifier_data_prev = null;
         // Buffer clearing / initialisation
         classifier_buffer = new ArrayList<>();
     }
@@ -1364,7 +1366,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
         while(mt_classifier_flag) {
 //            Log.v("Classifier", "Classifier thread is active...");
-            // Reading data from the processing buffer queue
+            // Checking for data in the processing buffer
             while (proc_buffer == null || proc_buffer.size() == 0) {
                 try {
                     Thread.sleep(200);
@@ -1375,6 +1377,9 @@ public class ScrollingActivity extends AppCompatActivity {
                     return;
                 }
             }
+            // Save previous classifier input for plotting
+            classifier_data_prev = classifier_data;
+            // Read newest data from the processing buffer
             classifier_data = proc_buffer.remove(0);
             // Loading the data into the nmf class object
             nmf.loadV1(classifier_data);
@@ -1627,8 +1632,8 @@ public class ScrollingActivity extends AppCompatActivity {
             curr_image_view++;
         }
         // STFT plot
-        if (processing_plotting_flag && classifier_data != null) {
-            Primitive64Store temp = classifier_data;
+        if (processing_plotting_flag && classifier_data_prev != null) {
+            Primitive64Store temp = classifier_data_prev;
             Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());
             for (long i = temp.countRows()-1; i >= 0; i--){
                 for (long j = 0; j < temp.countColumns(); j++) {
