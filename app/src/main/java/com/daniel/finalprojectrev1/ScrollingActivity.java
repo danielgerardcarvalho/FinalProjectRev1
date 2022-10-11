@@ -56,6 +56,11 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private ActivityScrollingBinding binding;
 
+    // Load C++ library into program
+    static {
+        System.loadLibrary("finalprojectrev1");
+    }
+
     /* General Operation */
     //TODO: maybe change some of these to individual sub-systems later?
     private boolean system_flag;

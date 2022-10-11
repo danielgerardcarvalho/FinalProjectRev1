@@ -12,6 +12,11 @@ import java.util.ArrayList;
 
 public class NMF {
 
+    // Load C++ library into program
+    static {
+        System.loadLibrary("finalprojectrev1");
+    }
+
     // Import struct-like-class
     public static class NMF_Mini {
         double[][] W1;
@@ -148,7 +153,9 @@ public class NMF {
         // Saving result
         // TODO: Check if this is matrix multiplication, check if countRows and countColumns does what is expected
         // Calculating V2, V2 = W2 x H
-        this.W2.multiply(this.H, this.V2);
+        // TODO: CONVERTED C++ FUNCTION
+//        this.W2.multiply(this.H, this.V2);
+        this.V2 = matmul_j(this.W2, this.H);
         Log.v("NMFRun", String.format("Size of A: (%d, %d), Size of B(%d, %d), Size of C (%d, %d)", this.W2.countRows(), this.W2.countColumns(), this.H.countRows(), this.H.countColumns(), this.V2.countRows(), this.V2.countColumns()));
     }
 
@@ -160,13 +167,22 @@ public class NMF {
         Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.W1.countRows(), this.H.countColumns());
         Primitive64Store numerator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
         Primitive64Store denominator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
-        // Calculating the V1 estimate
-        this.W1.multiply(this.H, V1_estimate);
+        // Calculating the V1 estimate TODO:CONVERT TO C++
+//        this.W1.multiply(this.H, V1_estimate);
+        V1_estimate = matmul_j(this.W1, this.H);
 //        V1_estimate = toPrimitive(V1_estimate.add(MIN_CONST));
-        // Calculating the numerator
+        // Calculating the numerator TODO: CONVERT TO C++
+        double[][] temp = {{1,1},{2,2},{3,3}};
+        Primitive64Store p1 = createMatrix(temp);
+        Primitive64Store p2 = toPrimitive(p1.transpose());
+        Primitive64Store p3 = transpose(p1);
+
+
         (this.W1.transpose()).multiply(divide(this.V1, V1_estimate), numerator);
-        // Calculating the denominator
+//        numerator = matmul_j(toPrimitive(this.W1.transpose()), divide(this.V1, V1_estimate));
+        // Calculating the denominator TODO: CONVERT TO C++
         (this.W1.transpose()).multiply(this.ones, denominator);
+//        denominator = matmul_j(toPrimitive(this.W1.transpose()), this.ones);
 //        denominator = toPrimitive(denominator.add(min_const));
         // TODO: Check if the min_const add to denominator is needed
         this.H = mul(this.H, (divide(numerator, denominator)));
@@ -201,10 +217,12 @@ public class NMF {
     // TODO: improve - high
     private void calcError() {
         // NOTE: current implementation
-        // TODO: see that this multiplication is matmul and not element wise
-        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H).add(this.MIN_CONST));
+        // TODO: CONVERT TO C++, CONVERT ADD TO C++
+//        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H).add(this.MIN_CONST));
+        Primitive64Store V1_est = toPrimitive(matmul_j(this.W1, this.H).add(this.MIN_CONST));
         Primitive64Store deviation_log = log(divide(this.V1, V1_est));
         Primitive64Store deviation = toPrimitive(mul(this.V1, deviation_log));
+        // TODO: CONVERT ADD AND SUB TO C++
         error.add(sum(toPrimitive(deviation.add(V1_est.subtract(this.V1)))));
 
 //        error.add(sum(toPrimitive(this.V1.multiply(toPrimitive(log(divide(this.V1, V1_est)))).subtract(this.V1).add(V1_est))));
@@ -392,5 +410,54 @@ public class NMF {
         }
         return ret;
     }
+
+    // C++ FUNCTIONS - MATMUL
+    public Primitive64Store matmul_j(Primitive64Store matrix1, Primitive64Store matrix2){
+        // Calculate matmul
+        double [] temp_mat = matmul(matrix1.data, matrix2.data, (int) matrix1.countRows(),
+                (int) matrix1.countColumns(), (int) matrix2.countRows(), (int) matrix2.countColumns());
+        // Convert to Primitive store
+        Primitive64Store ret = createMatrix(matrix1.countRows(),matrix2.countColumns());
+        for (int i = 0; i < matrix1.countRows() * matrix2.countColumns(); i++){
+            ret.set(i, temp_mat[i]);
+        }
+        return ret;
+    }
+    public native double[] matmul(double[] mat1, double[] mat2, int mat1_rows, int mat1_cols,
+                                  int mat2_rows, int mat2_cols);
+
+    public Primitive64Store transpose(Primitive64Store matrix){
+        Primitive64Store ret = createMatrix(matrix.countColumns(), matrix.countColumns());
+        for (int i = 0; i < matrix.countColumns(); i++){
+            for (int j = 0; j < matrix.countRows(); j++){
+                ret.set(i,j, matrix.get(j,i));
+            }
+        }
+        return ret;
+    }
+
+    // TRANSPOSE
+//    public Primitive64Store transpose_j(Primitive64Store matrix){
+//        double[] temp_mat = transpose(matrix.data, (int) matrix.countRows(), (int) matrix.countColumns());
+//        // Convert to Primitive store
+//        Primitive64Store ret = createMatrix(matrix.countRows(), matrix.countColumns());
+//        for (int i = 0; i < matrix.countRows() * matrix.countColumns(); i++){
+//            ret.set(i, temp_mat[i]);
+//        }
+//        return ret;
+//    }
+//    public native double[] transpose(double[] mat, int mat_rows, int mat_cols);
+
+    // ADD
+    public Primitive64Store add_j(Primitive64Store matrix1, Primitive64Store matrix2){
+        double[] temp_mat = add(matrix1.data, matrix2.data, (int) matrix1.countRows(), (int) matrix1.countColumns());
+        // Converting to Primitive store
+        Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
+        for (int i = 0; i < matrix1.countRows() * matrix1.countColumns(); i++){
+            ret.set(i, temp_mat[i]);
+        }
+        return ret;
+    }
+    public native double[] add(double[] mat1, double[] mat2, int mat_rows, int mat_cols);
 }
 
