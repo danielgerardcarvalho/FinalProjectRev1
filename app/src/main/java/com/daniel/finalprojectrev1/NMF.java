@@ -4,11 +4,12 @@ import android.app.Activity;
 import android.util.Log;
 import android.widget.TextView;
 
-import org.ojalgo.matrix.store.MatrixStore;
+//import org.ojalgo.matrix.store.MatrixStore;
 import org.ojalgo.matrix.store.Primitive64Store;
 import org.ojalgo.random.Gamma;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class NMF {
 
@@ -27,17 +28,17 @@ public class NMF {
     }
 
     // non-negative data matrix
-    private Primitive64Store V1;
+    private double[][] V1;
     // annotated activity data matrix
-    private Primitive64Store V2;
+    private double[][] V2;
     // dictionary matrix 1 (primary dictionary matrix)
-    private Primitive64Store W1;
+    private double[][] W1;
     // dictionary matrix 2 (secondary dictionary matrix)
-    private Primitive64Store W2;
+    private double[][] W2;
     // coefficient matrix
-    private Primitive64Store H;
+    private double[][] H;
     // ones matrix
-    private Primitive64Store ones;
+    private double[][] ones;
     // frequency bins
     private int f;
     // number of frames/windows
@@ -156,7 +157,7 @@ public class NMF {
         // TODO: CONVERTED C++ FUNCTION
 //        this.W2.multiply(this.H, this.V2);
         this.V2 = matmul_j(this.W2, this.H);
-        Log.v("NMFRun", String.format("Size of A: (%d, %d), Size of B(%d, %d), Size of C (%d, %d)", this.W2.countRows(), this.W2.countColumns(), this.H.countRows(), this.H.countColumns(), this.V2.countRows(), this.V2.countColumns()));
+        Log.v("NMFRun", String.format("Size of A: (%d, %d), Size of B(%d, %d), Size of C (%d, %d)", this.W2.length, this.W2[0].length, this.H.length, this.H[0].length, this.V2.length, this.V2[0].length));
     }
 
     // TODO: improve - high
@@ -164,26 +165,25 @@ public class NMF {
         // NOTE: Current implementation
         // Kullback-Leibler Multiplicative Update Rule
         // Pre-allocating data
-        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.W1.countRows(), this.H.countColumns());
-        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
-        Primitive64Store denominator = Primitive64Store.FACTORY.make(this.W1.countColumns(), this.V1.countColumns());
+        double[][] V1_estimate = new double[this.W1.length][this.H[0].length];
+        double[][] numerator = new double[this.W1[0].length][this.V1[0].length];
+        double[][] denominator = new double[this.W1[0].length][this.V1[0].length];
         // Calculating the V1 estimate TODO:CONVERT TO C++
+        double[][] temp = {{1,1},{2,2},{3,3}};
+        double[][] p1 = transpose(temp);
+        double[][] p2 = matmul_j(temp, p1);
 //        this.W1.multiply(this.H, V1_estimate);
         V1_estimate = matmul_j(this.W1, this.H);
 //        V1_estimate = toPrimitive(V1_estimate.add(MIN_CONST));
+
         // Calculating the numerator TODO: CONVERT TO C++
-        double[][] temp = {{1,1},{2,2},{3,3}};
-        Primitive64Store p1 = createMatrix(temp);
-        Primitive64Store p2 = toPrimitive(p1.transpose());
-        Primitive64Store p3 = transpose(p1);
-
-
         (this.W1.transpose()).multiply(divide(this.V1, V1_estimate), numerator);
 //        numerator = matmul_j(toPrimitive(this.W1.transpose()), divide(this.V1, V1_estimate));
+
         // Calculating the denominator TODO: CONVERT TO C++
         (this.W1.transpose()).multiply(this.ones, denominator);
 //        denominator = matmul_j(toPrimitive(this.W1.transpose()), this.ones);
-//        denominator = toPrimitive(denominator.add(min_const));
+
         // TODO: Check if the min_const add to denominator is needed
         this.H = mul(this.H, (divide(numerator, denominator)));
 
@@ -217,13 +217,12 @@ public class NMF {
     // TODO: improve - high
     private void calcError() {
         // NOTE: current implementation
-        // TODO: CONVERT TO C++, CONVERT ADD TO C++
 //        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H).add(this.MIN_CONST));
-        Primitive64Store V1_est = toPrimitive(matmul_j(this.W1, this.H).add(this.MIN_CONST));
-        Primitive64Store deviation_log = log(divide(this.V1, V1_est));
-        Primitive64Store deviation = toPrimitive(mul(this.V1, deviation_log));
-        // TODO: CONVERT ADD AND SUB TO C++
-        error.add(sum(toPrimitive(deviation.add(V1_est.subtract(this.V1)))));
+        double[][] V1_est = add(matmul_j(this.W1, this.H), this.MIN_CONST);
+        double[][] deviation_log = log(divide(this.V1, V1_est));
+        double[][] deviation = mul(this.V1, deviation_log);
+        error.add(sum(add(deviation,sub(V1_est,this.V1))));
+//        error.add(sum(toPrimitive(deviation.add(V1_est.subtract(this.V1)))));
 
 //        error.add(sum(toPrimitive(this.V1.multiply(toPrimitive(log(divide(this.V1, V1_est)))).subtract(this.V1).add(V1_est))));
 
@@ -260,27 +259,23 @@ public class NMF {
 
     private void initH() {
         // Creating the matrices
-        this.H = Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Gamma(1.0, 1.0));
-        this.H = toPrimitive(this.H.divide(max(abs(this.H))).add(MIN_CONST));
+        this.H = Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Gamma(1.0, 1.0)).toRawCopy2D();
+        this.H = add(divide(this.H, max(abs(this.H))), MIN_CONST);
+//        this.H = toPrimitive(this.H.divide(max(abs(this.H))).add(MIN_CONST));
         Log.e("NMF TEST", String.format("H max: %f, min: %f", max(abs(this.H)), min(abs(this.H))));
 //        this.H = (Primitive64Store) Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Poisson(1.0));
     }
 
-    // TODO: implement - low
-    private void loadV1(double [][] data) {}
-
-    public void loadV1(Primitive64Store data) {
-        this.V1 = toPrimitive(data.divide(sum(data)));
-//        this.V1 = data.copy();
-//        this.V1 = toPrimitive(this.V1.divide(sum(this.V1)));
+    public void loadV1(double[][] data) {
+        this.V1 = divide(data, sum(data));
     }
 
     public void loadW1(double [][] data) {
-        this.W1 = createMatrix(data);
+        this.W1 = data.clone();
     }
 
     public void loadW2(double [][] data) {
-        this.W2 = createMatrix(data);
+        this.W2 = data.clone();
     }
 
     public void loadTrainingError(double training_error){
@@ -294,19 +289,19 @@ public class NMF {
     }
 
     /* Get methods */
-    public Primitive64Store getV1(){
+    public double[][] getV1(){
         return this.V1;
     }
-    public Primitive64Store getV2(){
+    public double[][] getV2(){
         return this.V2;
     }
-    public Primitive64Store getW1(){
+    public double[][] getW1(){
         return this.W1;
     }
-    public Primitive64Store getW2(){
+    public double[][] getW2(){
         return this.W2;
     }
-    public Primitive64Store getH(){
+    public double[][] getH(){
         return this.H;
     }
     public int getCurr_iter_num() {
@@ -318,123 +313,189 @@ public class NMF {
 
     /* Helpers */
     // Create a matrix - empty, shape only
-    private Primitive64Store createMatrix(long rows, long columns) {
-//        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
-//        return storeFactory.make(rows, columns);
-        return Primitive64Store.FACTORY.make(rows, columns);
+    private double[][] createMatrix(int rows, int columns) {
+        return new double[rows][columns];
     }
     // Create a matrix, filled with scalar value
-    private Primitive64Store createMatrix(long rows, long columns, double value) {
-//        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
-//        Primitive64Store ret = storeFactory.make(rows, columns);
-        Primitive64Store ret = createMatrix(rows, columns);
-        for (int i = 0; i < ret.size(); i++){
-            ret.set(i, value);
-        }
-        return ret;
-    }
-    // Create a matrix - filled, from 2D double
-    private Primitive64Store createMatrix(double[][] matrix) {
-        return Primitive64Store.FACTORY.rows(matrix);
-    }
-    // Convert MatrixStore to Primitive64Store
-    private Primitive64Store toPrimitive(MatrixStore matrix) {
-        Primitive64Store ret = Primitive64Store.FACTORY.make(matrix);
-        for (int i = 0; i < matrix.size(); i++) {
-            ret.set(i, matrix.get(i));
+    private double[][] createMatrix(int rows, int columns, double value) {
+        double[][] ret = new double[rows][columns];
+        for (double[] doubles : ret) {
+            Arrays.fill(doubles, value);
         }
         return ret;
     }
 
     // Element-wise logarithm of matrix, with base
-    private Primitive64Store log(Primitive64Store matrix, int log_base) {
-        for (long i = 0; i < matrix.size(); i++){
-            matrix.set(i, Math.log(matrix.get(i))/Math.log(log_base));
+    private double[][] log(double[][] matrix, int log_base) {
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++){
+                matrix[i][j] = Math.log(matrix[i][j]) / Math.log(log_base);
+            }
         }
         return matrix;
     }
     // Element-wise logarithm of matrix, natural log
-    private Primitive64Store log(Primitive64Store matrix) {
-        for (long i = 0; i < matrix.size(); i++){
-            matrix.set(i, Math.log(matrix.get(i)));
+    private double[][] log(double[][] matrix) {
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++){
+                matrix[i][j] = Math.log(matrix[i][j]);
+            }
         }
         return matrix;
     }
+    // Element-wise divide of matrix and scalar
+    private double[][] divide(double[][] matrix, double scalar){
+        double[][] ret = new double[matrix.length][matrix[0].length];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                ret[i][j] = matrix[i][j] / scalar;
+            }
+        }
+        return ret;
+    }
     // Element-wise divide of matrix
-    private Primitive64Store divide(Primitive64Store numerator, Primitive64Store denominator) {
-        Primitive64Store ret = createMatrix(numerator.countRows(), numerator.countColumns());
-        for (long i = 0; i < ret.size(); i++) {
-            ret.set(i, numerator.get(i) / denominator.get(i));
+    private double[][] divide(double[][] numerator, double[][] denominator) {
+        double[][] ret = new double[numerator.length][numerator[0].length];
+        for (int i = 0; i < ret.length; i++) {
+            for (int j = 0; j < ret[0].length; j++) {
+                ret[i][j] = numerator[i][j] / denominator[i][j];
+            }
         }
         return ret;
     }
     // Element-wise multiplication of matrix
-    private Primitive64Store mul(Primitive64Store matrix1, Primitive64Store matrix2){
-        Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
-        for (long i = 0; i < ret.size(); i++) {
-            ret.set(i, matrix1.get(i) * matrix2.get(i));
+    private double[][] mul(double[][] matrix1, double[][] matrix2){
+        // TODO: check that .size, countRows, countColumns does what you think.
+        double[][] ret = new double[matrix1.length][matrix1[0].length];
+        for (int i = 0; i < ret.length; i++) {
+            for (int j = 0; j < ret[i].length; j++) {
+                ret[i][j] = matrix1[i][j] * matrix2[i][j];
+            }
+        }
+        return ret;
+    }
+    // Element-wise addition of matrix and scalar
+    private double[][] add(double[][] matrix, double scalar){
+        double [][] ret = new double [matrix.length][matrix[0].length];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                ret[i][j] = ret[i][j] + scalar;
+            }
+        }
+        return ret;
+    }
+    // Element-wise addition of matrix and matrix
+    private double[][] add(double[][] matrix1, double[][] matrix2){
+        double[][] ret = new double[matrix1.length][matrix1[0].length];
+        for (int i = 0; i < matrix1.length; i++){
+            for (int j = 0; j < matrix1[i].length; j++){
+                ret[i][j] = matrix1[i][j] + matrix2[i][j];
+            }
+        }
+        return ret;
+    }
+    // Element-wise subtraction of matrix and matrix
+    private double[][] sub(double[][] matrix1, double[][] matrix2){
+        double[][] ret = new double[matrix1.length][matrix1[0].length];
+        for (int i = 0; i < matrix1.length; i++){
+            for (int j = 0; j < matrix1[i].length; j++){
+                ret[i][j] = matrix1[i][j] - matrix2[i][j];
+            }
         }
         return ret;
     }
 
     // Sum of matrix
-    private double sum(Primitive64Store matrix) {
-        // TODO: see that size does what you think
+    private double sum(double[][] matrix) {
         double value = 0;
-        for (int i = 0; i < matrix.size(); i++){
-            value = value + matrix.get(i);
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                value = value + matrix[i][j];
+            }
         }
         return value;
     }
     // Get largest value in the matrix
-    private double max(Primitive64Store matrix) {
-        double ret = matrix.get(0);
-        for (long i = 0; i < matrix.size(); i++){
-            ret = Math.max(matrix.get(i), ret);
+    private double max(double[][] matrix) {
+        double ret = matrix[0][0];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                ret = Math.max(matrix[i][j], ret);
+            }
         }
         return ret;
     }
     // Get smallest value in the matrix
-    private double min(Primitive64Store matrix) {
-        double ret = matrix.get(0);
-        for (long i = 0; i < matrix.size(); i++){
-            ret = Math.min(matrix.get(i), ret);
+    private double min(double[][] matrix) {
+        double ret = matrix[0][0];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++) {
+                ret = Math.min(matrix[i][j], ret);
+            }
         }
         return ret;
     }
     // Get absolute values of matrix
-    private Primitive64Store abs(Primitive64Store matrix) {
-        Primitive64Store ret = Primitive64Store.FACTORY.make(matrix.countRows(), matrix.countColumns());
-        for (long i = 0; i < matrix.size(); i++){
-            ret.set(i, Math.abs(matrix.get(i)));
+    private double[][] abs(double[][] matrix) {
+        double[][] ret = new double[matrix.length][matrix[0].length];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++) {
+                ret[i][j] = Math.abs(matrix[i][j]);
+            }
+        }
+        return ret;
+    }
+    // Transpose matrix
+    public double[][] transpose(double[][] matrix){
+        double[][] ret = createMatrix(matrix[0].length, matrix.length);
+        for (int i = 0; i < matrix[0].length; i++){
+            for (int j = 0; j < matrix.length; j++){
+                ret[i][j] = matrix[j][i];
+            }
         }
         return ret;
     }
 
+//    public Primitive64Store transpose(Primitive64Store matrix){
+//        Primitive64Store ret = createMatrix(matrix.countColumns(), matrix.countRows());
+//        for (int i = 0; i < matrix.countColumns(); i++){
+//            for (int j = 0; j < matrix.countRows(); j++){
+//                ret.set(i,j, matrix.get(j,i));
+//            }
+//        }
+//        return ret;
+//    }
+
     // C++ FUNCTIONS - MATMUL
-    public Primitive64Store matmul_j(Primitive64Store matrix1, Primitive64Store matrix2){
+    public double[][] matmul_j(double[][] matrix1, double[][] matrix2){
         // Calculate matmul
-        double [] temp_mat = matmul(matrix1.data, matrix2.data, (int) matrix1.countRows(),
-                (int) matrix1.countColumns(), (int) matrix2.countRows(), (int) matrix2.countColumns());
+        double[] flat_matrix1 = new double[matrix1.length * matrix1[0].length];
+        double[] flat_matrix2 = new double[matrix2.length * matrix2[0].length];
+        int count = 0;
+        for (int i = 0; i < matrix1.length; i++){
+            for (int j = 0; j < matrix1[i].length; j++){
+                flat_matrix1[count++] = matrix1[i][j];
+            }
+        }
+        count = 0;
+        for (int i = 0; i < matrix2.length; i++){
+            for (int j = 0; j < matrix2[i].length; j++){
+                flat_matrix2[count++] = matrix2[i][j];
+            }
+        }
+        double [] temp_mat = matmul(flat_matrix1, flat_matrix2, matrix1.length,
+                matrix1[0].length, matrix2.length, matrix2[0].length);
         // Convert to Primitive store
-        Primitive64Store ret = createMatrix(matrix1.countRows(),matrix2.countColumns());
-        for (int i = 0; i < matrix1.countRows() * matrix2.countColumns(); i++){
-            ret.set(i, temp_mat[i]);
+        double[][] ret = new double[matrix1.length][matrix2[0].length];
+        for (int i = 0; i < matrix1.length; i++){
+            for (int j = 0; j < matrix2[0].length; j++){
+                ret[i][j] = temp_mat[i*matrix2[0].length + j];
+            }
         }
         return ret;
     }
     public native double[] matmul(double[] mat1, double[] mat2, int mat1_rows, int mat1_cols,
                                   int mat2_rows, int mat2_cols);
-
-    public Primitive64Store transpose(Primitive64Store matrix){
-        Primitive64Store ret = createMatrix(matrix.countColumns(), matrix.countColumns());
-        for (int i = 0; i < matrix.countColumns(); i++){
-            for (int j = 0; j < matrix.countRows(); j++){
-                ret.set(i,j, matrix.get(j,i));
-            }
-        }
-        return ret;
-    }
 
     // TRANSPOSE
 //    public Primitive64Store transpose_j(Primitive64Store matrix){
@@ -449,15 +510,15 @@ public class NMF {
 //    public native double[] transpose(double[] mat, int mat_rows, int mat_cols);
 
     // ADD
-    public Primitive64Store add_j(Primitive64Store matrix1, Primitive64Store matrix2){
-        double[] temp_mat = add(matrix1.data, matrix2.data, (int) matrix1.countRows(), (int) matrix1.countColumns());
-        // Converting to Primitive store
-        Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
-        for (int i = 0; i < matrix1.countRows() * matrix1.countColumns(); i++){
-            ret.set(i, temp_mat[i]);
-        }
-        return ret;
-    }
-    public native double[] add(double[] mat1, double[] mat2, int mat_rows, int mat_cols);
+//    public Primitive64Store add_j(Primitive64Store matrix1, Primitive64Store matrix2){
+//        double[] temp_mat = add(matrix1.data, matrix2.data, (int) matrix1.countRows(), (int) matrix1.countColumns());
+//        // Converting to Primitive store
+//        Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
+//        for (int i = 0; i < matrix1.countRows() * matrix1.countColumns(); i++){
+//            ret.set(i, temp_mat[i]);
+//        }
+//        return ret;
+//    }
+//    public native double[] add(double[] mat1, double[] mat2, int mat_rows, int mat_cols);
 }
 

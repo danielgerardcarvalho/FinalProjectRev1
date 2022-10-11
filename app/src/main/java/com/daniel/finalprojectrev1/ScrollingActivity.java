@@ -36,8 +36,10 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.Gson;
 
-import org.ojalgo.matrix.store.MatrixStore;
-import org.ojalgo.matrix.store.PhysicalStore;
+//import org.ojalgo.matrix.store.MatrixStore;
+//import org.ojalgo.matrix.store.PhysicalStore;
+//import org.ojalgo.matrix.store.Primitive64Store;
+
 import org.ojalgo.matrix.store.Primitive64Store;
 
 import java.io.File;
@@ -108,7 +110,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_audio_processing_runnable;
     private boolean mt_audio_processing_flag;
     private short [] proc_data;
-    private ArrayList<Primitive64Store> proc_buffer;
+    private ArrayList<double[][]> proc_buffer;
 
     /* Classifier */
     // classifier constants
@@ -118,9 +120,9 @@ public class ScrollingActivity extends AppCompatActivity {
     private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
     private boolean mt_classifier_flag;                 // multi-thread status flag
     private NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
-    private Primitive64Store classifier_data_prev;      // classifier input (previous) used for plotting
-    private Primitive64Store classifier_data;           // classifier input
-    private ArrayList<Primitive64Store> classifier_buffer;   // classifier output buffer
+    private double[][] classifier_data_prev;      // classifier input (previous) used for plotting
+    private double[][] classifier_data;           // classifier input
+    private ArrayList<double[][]> classifier_buffer;   // classifier output buffer
 
 
     /* Plotting */
@@ -1108,7 +1110,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
             // Perform STFT
             // TODO: (MEL) removed in mean-time
-            Primitive64Store stft = stft(norm_proc_data, window_size, hop_size, num_windows,
+            double[][] stft = stft(norm_proc_data, window_size, hop_size, num_windows,
                     window_coeff, fft/*, frequency_range, melscale_range*/);
             // Check if processing buffer is full
             while (proc_buffer.size() == PROC_QUEUE_SIZE){
@@ -1139,13 +1141,13 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // TODO: (MEL) removed in mean-time.
-    private Primitive64Store stft(double[] data, int window_size, int hop_size, int num_windows,
+    private double[][] stft(double[] data, int window_size, int hop_size, int num_windows,
                              double[] window_coeff, FFT fft/*, Primitive64Store frequency_range,
                              Primitive64Store melscale_range*/) {
         double [] window;
         double [] spec_window_real;
         double [] spec_window_imag;
-        Primitive64Store spectrogram;
+        double[][] spectrogram;
         double [][] temp_spectrogram = new double[num_windows][proc_fft_size/2];
         // TODO: (MEL) removed in mean-time
 //        DenseMatrix mel_window = new DenseMatrix(1, 1);
@@ -1179,34 +1181,16 @@ public class ScrollingActivity extends AppCompatActivity {
 //            }
         }
         // Converting from double[][] to Primitive64Storage
-        spectrogram = createMatrix(temp_spectrogram);
+//        spectrogram = createMatrix(temp_spectrogram);
 
         // Scaling the spectrogram
-        spectrogram = pow(spectrogram, 2.0);
+        spectrogram = pow(temp_spectrogram, 2.0);
         // Converting from amplitude to dB and transposing
         double reference = min(abs(spectrogram));
-        spectrogram = toPrimitive(ampToDB(spectrogram, reference).transpose());
+        spectrogram = transpose(ampToDB(spectrogram, reference));
 
         // Scaling the output to fit between 80 and MIN_CONST
         spectrogram = scale(spectrogram, MIN_CONST, 80);
-//        Primitive64Store ret = Primitive64Store.FACTORY.make(spectrogram.countRows(),spectrogram.countColumns());
-//        double max = max(spectrogram);
-//        for (int i = 0; i < spectrogram.size(); i ++){
-//            ret.set(i, Math.max(spectrogram.get(i), max - 80));
-//        }
-//        spectrogram = ret.copy();
-
-//        // Threshold the minimum value to that 80dB from maximum
-//        double threshold = max(spectrogram) - 80;
-//        for (int i = 0; i < spectrogram.size(); i++) {
-//            spectrogram.set(i, Math.max(threshold, spectrogram.get(i)));
-//        }
-
-        // TODO: try and remove
-        // Transposing the spectrogram to correct orientation, taking spectrogram to power of 2 for
-        // noise resistance
-//        spectrogram = toPrimitive(spectrogram.transpose());
-//        spectrogram = pow(toPrimitive(spectrogram.transpose()), 2.0);
 
         Log.v("AudioProcessing", String.format("STFT Summary:" +
                         "\n\tinput fft size (rows):\t\t%d" +
@@ -1219,7 +1203,7 @@ public class ScrollingActivity extends AppCompatActivity {
                         "\nValues of STFT" +
                         "\n\tmax value:\t\t%f" +
                         "\n\tmin value:\t\t%f", proc_fft_size, proc_num_time_frames,
-                spectrogram.countRows(), spectrogram.countColumns(), proc_fft_size/2, num_windows,
+                spectrogram.length, spectrogram[0].length, proc_fft_size/2, num_windows,
                 max(spectrogram), min(spectrogram)));
 
         return spectrogram;
@@ -1383,7 +1367,12 @@ public class ScrollingActivity extends AppCompatActivity {
                 }
             }
             // Save previous classifier input for plotting
-            classifier_data_prev = classifier_data;
+            if (classifier_data != null){
+                classifier_data_prev = classifier_data.clone();
+            }
+            else{
+                classifier_data_prev = null;
+            }
             // Read newest data from the processing buffer
             classifier_data = proc_buffer.remove(0);
             // Loading the data into the nmf class object
@@ -1391,15 +1380,17 @@ public class ScrollingActivity extends AppCompatActivity {
             // Starting nmf calculation
             nmf.start();
             // Retrieving results from nmf class object
-            Primitive64Store V2_output = nmf.getV2();
+            double[][] V2_output = nmf.getV2();
             // Basic thresholding implementation
             double V2_mean = mean(V2_output);
             double norm_modifier = 1.8;
-            for (int i = 0; i < V2_output.size(); i++) {
-                if ((V2_mean * norm_modifier) >= V2_output.get(i)) {
-                    V2_output.set(i, 0);
-                } else {
-                    V2_output.set(i, 1);
+            for (int i = 0; i < V2_output.length; i++) {
+                for (int j = 0; j < V2_output[0].length; j++){
+                    if ((V2_mean * norm_modifier) >= V2_output[i][j]) {
+                        V2_output[i][j] = 0;
+                    } else {
+                        V2_output[i][j] = 1;
+                    }
                 }
             }
             // Outlier Removal and Correction
@@ -1407,20 +1398,20 @@ public class ScrollingActivity extends AppCompatActivity {
             int min_len = 3;
             int curr_len = 0;
             boolean event_inactive = false;
-            for (int i = 0; i < V2_output.countRows(); i++){
-                for (int j = 0; j < V2_output.countColumns(); j++) {
-                    if (V2_output.get(i, j) == 0 && !event_inactive) {
+            for (int i = 0; i < V2_output.length; i++){
+                for (int j = 0; j < V2_output[i].length; j++) {
+                    if (V2_output[i][j] == 0 && !event_inactive) {
                         event_inactive = true;
                         curr_len++;
                     }
-                    else if (V2_output.get(i, j) == 0 && event_inactive) {
+                    else if (V2_output[i][j] == 0 && event_inactive) {
                             curr_len++;
                     }
-                    else if (V2_output.get(i, j) == 1 && event_inactive) {
+                    else if (V2_output[i][j] == 1 && event_inactive) {
                         event_inactive = false;
                         if (curr_len < min_len) {
                             for (int k = 0; k < curr_len; k++) {
-                                V2_output.set(i, j - curr_len + k, 1);
+                                V2_output[i][j - curr_len + k] = 1;
                             }
                         }
                         curr_len = 0;
@@ -1431,24 +1422,24 @@ public class ScrollingActivity extends AppCompatActivity {
             min_len = 3;
             curr_len = 0;
             boolean event_active = false;
-            for (int i = 0; i < V2_output.countRows(); i++) {
-                for (int j = 0; j < V2_output.countColumns(); j++) {
-                    if (V2_output.get(i, j) == 1 && !event_active) {
+            for (int i = 0; i < V2_output.length; i++) {
+                for (int j = 0; j < V2_output[i].length; j++) {
+                    if (V2_output[i][j] == 1 && !event_active) {
                         event_active = true;
                         curr_len++;
                     }
-                    else if (V2_output.get(i, j) == 1 && event_active) {
+                    else if (V2_output[i][j] == 1 && event_active) {
                         curr_len++;
                     }
-                    else if (V2_output.get(i, j) == 0 && event_active) {
+                    else if (V2_output[i][j] == 0 && event_active) {
                         event_active = false;
                         if (curr_len < min_len) {
                             for (int k = 0; k < curr_len; k++){
-                                if (j - curr_len + k > V2_output.countColumns() ||
+                                if (j - curr_len + k > V2_output[i].length ||
                                     j - curr_len + k < 0){
                                     continue;
                                 }
-                                V2_output.set(i, j - curr_len + k, 0);
+                                V2_output[i][j - curr_len + k] = 0;
                             }
                         }
                         curr_len = 0;
@@ -1480,18 +1471,17 @@ public class ScrollingActivity extends AppCompatActivity {
         int num_freq_bins = 128;
         int num_time_frames = 500;
         // Creating the matrix
-        Primitive64Store spec_matrix = (Primitive64Store) Primitive64Store.FACTORY.makeZero(
-                num_freq_bins, num_time_frames);
+        double[][] spec_matrix = createMatrix(num_freq_bins, num_time_frames, 0.0);
 //        DenseMatrix spec_matrix = DenseMatrix.zeros(num_freq_bins, num_time_frames);
-        spec_matrix.set(100,50,0.5);
-        spec_matrix.set(100,51,1);
+        spec_matrix[100][50] = 0.5;
+        spec_matrix[100][51] = 1;
 
         // Normalise the matrix
 
         double temp_max = max(spec_matrix);
         for (int i = 0; i < num_freq_bins; i++){
             for (int j = 0; j < num_time_frames; j++){
-                temp_max = Math.max(spec_matrix.get(i,j), temp_max);
+                temp_max = Math.max(spec_matrix[i][j], temp_max);
             }
         }
 //        spec_matrix = spec_matrix.div(temp_max);
@@ -1509,15 +1499,15 @@ public class ScrollingActivity extends AppCompatActivity {
                 max = Math.abs(proc_data[i]);
         }
         // create matrix from proc_data
-        Primitive64Store temp = createMatrix(height, Math.abs(width));
+        double[][] temp = createMatrix(height, Math.abs(width));
 
         int iter = (int)(-height/2.0);
         for (int i = 0; i < height; i++){
             for (int j = 0; j < width; j++){
                 if ((Math.abs(proc_data[j]/(1.0*max))*(height/2.0)) >= Math.abs(iter)){
-                    temp.set(i,j,1);
+                    temp[i][j] = 1;
                 } else {
-                    temp.set(i, j, 0);
+                    temp[i][j] = 0;
                 }
             }
             iter++;
@@ -1529,25 +1519,23 @@ public class ScrollingActivity extends AppCompatActivity {
     private void tempProcPlot(ImageView image) {
         // Extract spectrogram from the proc_buffer queue
         while (proc_buffer == null || proc_buffer.size() == 0) {}
-        Primitive64Store temp = proc_buffer.remove(0);
-        Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());// createMatrix(temp.countRows(), temp.countColumns());
-        for (long i = temp.countRows()-1; i >= 0; i--){
-            for (long j = 0; j < temp.countColumns(); j++) {
-                invert_temp.set(i,j, temp.get(temp.countRows()-(i+1),j));
+        double[][] temp = proc_buffer.remove(0);
+        double[][] invert_temp = createMatrix(temp.length, temp[0].length);// createMatrix(temp.countRows(), temp.countColumns());
+        for (int i = temp.length-1; i >= 0; i--){
+            for (int j = 0; j < temp[0].length; j++) {
+                invert_temp[i][j]= temp[temp.length-(i+1)][j];
             }
         }
-        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
-        // TODO: cleanup
-//        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
-        Primitive64Store val = toPrimitive(invert_temp.divide(max(invert_temp)));
-        Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
+        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.length, invert_temp[0].length, invert_temp[0][0]));
+        double[][] val = divide(invert_temp, max(invert_temp));
+        Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.length, val[0].length, val[0][0]));
         BitMapView sp_view_obj = new BitMapView(this, val, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
     private void tempClassifierPlot(ImageView image) {
         // Extract spectrogram from the classifier_buffer queue
         while (classifier_buffer == null || classifier_buffer.size() == 0) {}
-        Primitive64Store temp = classifier_buffer.remove(0);
+        double[][] temp = classifier_buffer.remove(0);
 //        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
 //        for (int i = temp.rows-1; i >= 0; i--){
 //            for (int j = 0; j < temp.cols; j++) {
@@ -1618,15 +1606,15 @@ public class ScrollingActivity extends AppCompatActivity {
                     max = Math.abs(temp_data[i]);
             }
             // create matrix from proc_data
-            Primitive64Store temp = createMatrix(height, Math.abs(width));
+            double[][] temp = createMatrix(height, Math.abs(width));
 
             int iter = (int)(-height/2.0);
             for (int i = 0; i < height; i++){
                 for (int j = 0; j < width; j++){
                     if ((Math.abs(temp_data[j]/(1.0*max))*(height/2.0)) >= Math.abs(iter)){
-                        temp.set(i,j,1);
+                        temp[i][j] = 1;
                     } else {
-                        temp.set(i, j, 0);
+                        temp[i][j] = 0;
                     }
                 }
                 iter++;
@@ -1638,17 +1626,16 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         // STFT plot
         if (processing_plotting_flag && classifier_data_prev != null) {
-            Primitive64Store temp = classifier_data_prev;
-            Primitive64Store invert_temp = createMatrix(temp.countRows(), temp.countColumns());
-            for (long i = temp.countRows()-1; i >= 0; i--){
-                for (long j = 0; j < temp.countColumns(); j++) {
-                    invert_temp.set(i,j, temp.get(temp.countRows()-(i+1),j));
+            double[][] temp = classifier_data_prev.clone();
+            double[][] invert_temp = createMatrix(temp.length, temp[0].length);
+            for (int i = temp.length-1; i >= 0; i--){
+                for (int j = 0; j < temp[0].length; j++) {
+                    invert_temp[i][j] = temp[temp.length-(i+1)][j];
                 }
             }
 //            Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
             // TODO: cleanup
-//        Primitive64Store val = Primitive64Store.FACTORY.rows(invert_temp.divide(max(invert_temp)));
-            Primitive64Store val = toPrimitive(invert_temp.divide(max(invert_temp)));
+            double[][] val = divide(invert_temp, max(invert_temp));
 //            Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
             BitMapView sp_view_obj = new BitMapView(this, val, plotting_image_views.get(curr_image_view).getWidth());
             plottingUpdate(sp_view_obj, curr_image_view);
@@ -1656,7 +1643,7 @@ public class ScrollingActivity extends AppCompatActivity {
         }
         // Classifier output plot
         if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
-            Primitive64Store temp = classifier_buffer.remove(0);
+            double[][] temp = classifier_buffer.remove(0);
 //            BitMapView sp_view_obj = new BitMapView(this, temp, plotting_image_views.get(curr_image_view).getWidth());
 //            plottingUpdate(sp_view_obj, curr_image_view);
             // TODO: add the iterator the the output string
@@ -1682,15 +1669,17 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
     // Convert from amplitude values to dB values
-    private Primitive64Store ampToDB(Primitive64Store matrix, double ref) {
-        Primitive64Store temp = toPrimitive(log(toPrimitive(matrix.divide(ref)), 10).multiply(20));
+    private double[][] ampToDB(double[][] matrix, double ref) {
+        double[][] temp = mul(log(divide(matrix, ref), 10),20.0);
         return temp;
     }
     // Scale values in-between a maximum and minimum, thresholding the minimum
-    private Primitive64Store scale(Primitive64Store matrix, double min, double max) {
+    private double[][] scale(double[][] matrix, double min, double max) {
         double threshold_max = max(matrix) - max;
-        for (int i = 0; i < matrix.size(); i++){
-            matrix.set(i,  Math.max(matrix.get(i) - threshold_max, MIN_CONST));
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                matrix[i][j] = Math.max(matrix[i][j] - threshold_max, MIN_CONST);
+            }
         }
         return matrix;
     }
@@ -1795,94 +1784,72 @@ public class ScrollingActivity extends AppCompatActivity {
 //        return ret;
     }
 
-    // Gets the even index values from an array
-    private Primitive64Store getEvenValues(Primitive64Store array) {
-        Primitive64Store ret;
-        int length = array.size();
-        if (length % 2 == 0){
-            ret = createMatrix((int)(length/2), 1);
-        } else {
-            ret = createMatrix((int) Math.ceil(length/2.0), 1);
-        }
-
-//        int iter = 0;
-//        for (int i = 0; i < array.getValues().length; i=i+2){
-//            ret.set(iter, array.get(i,0));
-//            iter++;
-//        }
-        for (int i = 0; i < array.size()/2; i++){
-            ret.set(i, array.get(2*i));
-        }
-
-        return ret;
-    }
-    // Gets the odd index values from an array
-    private Primitive64Store getOddValues(Primitive64Store array) {
-        Primitive64Store ret;
-        int length = array.size();
-        if (length % 2 == 0){
-            ret = createMatrix((int)(length/2), 1);
-        } else {
-            ret = createMatrix((int) Math.floor(length/2.0), 1);
-        }
-
-//        int iter = 0;
-//        for (int i = 1; i < array.getValues().length; i=i+2){
-//                ret.set(iter, array.get(i,0));
-//                iter++;
-//        }
-        for (int i = 0; i < array.size()/2; i++) {
-            ret.set(i, array.get(i*2+1));
-        }
-
-        return ret;
-    }
-
     // Matrices
     // Create a matrix, filled with scalar value
-    private Primitive64Store createMatrix(long rows, long columns, double value) {
-        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
-        Primitive64Store ret = storeFactory.make(rows, columns);
-        for (int i = 0; i < ret.size(); i++){
-            ret.set(i, value);
+    private double[][] createMatrix(int rows, int columns, double value) {
+        double[][] ret = new double[rows][columns];
+        for (int i = 0; i < ret.length; i++){
+            for (int j = 0; j < ret[i].length; j++) {
+                ret[i][j] = value;
+            }
         }
         return ret;
     }
     // Create a matrix - empty, shape only
-    private Primitive64Store createMatrix(long rows, long columns) {
-        PhysicalStore.Factory<Double, Primitive64Store> storeFactory = Primitive64Store.FACTORY;
-        return storeFactory.make(rows, columns);
+    private double[][] createMatrix(int rows, int columns) {
+        return new double[rows][columns];
     }
-    // Create a matrix - filled, from 2D double
-    private Primitive64Store createMatrix(double[][] matrix) {
-        return Primitive64Store.FACTORY.rows(matrix);
-    }
-    // Creates a Primitive64Store "array", with values in-between min (inclusive) and max
+    // Creates a double[][] "array", with values in-between min (inclusive) and max
     // (exclusive), with steps of size.
-    private Primitive64Store createArray(double min, double max, int step){
+    private double[][] createArray(double min, double max, int step){
         int size = (int) Math.ceil((max - min) / step);
-        Primitive64Store temp = createMatrix(size, 1);
+        double[][] temp = createMatrix(size, 1);
         for (int i = 0; i < size; i++){
-            temp.set(i,(step * i) + min);
+            temp[i][0] = (step * i) + min;
         }
         return temp;
     }
 
     // Mathematics
     // Element-wise multiplication of matrix
-    private Primitive64Store mul(Primitive64Store matrix1, Primitive64Store matrix2){
+    private double[][] mul(double[][] matrix1, double[][] matrix2){
         // TODO: check that .size, countRows, countColumns does what you think.
-        Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
-        for (long i = 0; i < ret.size(); i++) {
-            ret.set(i, matrix1.get(i) * matrix2.get(i));
+        double[][] ret = createMatrix(matrix1.length, matrix1[0].length);
+        for (int i = 0; i < ret.length; i++) {
+            for (int j = 0; j < ret[i].length; j++) {
+                ret[i][j] = matrix1[i][j] * matrix2[i][j];
+            }
+        }
+        return ret;
+    }
+    // Element-wises multiplication of matrix and scalar
+    private double[][] mul(double[][] matrix, double scalar){
+        // TODO: check that .size, countRows, countColumns does what you think.
+        double[][] ret = createMatrix(matrix.length, matrix[0].length);
+        for (int i = 0; i < ret.length; i++) {
+            for (int j = 0; j < ret[i].length; j++) {
+                ret[i][j] = matrix[i][j] * scalar;
+            }
         }
         return ret;
     }
     // Element-wise divide of matrix
-    private Primitive64Store divide(Primitive64Store numerator, Primitive64Store denominator) {
-        Primitive64Store ret = createMatrix(numerator.countRows(), numerator.countColumns());
-        for (long i = 0; i < ret.size(); i++) {
-            ret.set(i, numerator.get(i) / denominator.get(i));
+    private double[][] divide(double[][] numerator, double[][] denominator) {
+        double[][] ret = createMatrix(numerator.length, numerator[0].length);
+        for (int i = 0; i < ret.length; i++) {
+            for (int j = 0; j < ret[i].length; j++) {
+                ret[i][j] = numerator[i][j] / denominator[i][j];
+            }
+        }
+        return ret;
+    }
+    // Element-wise divide of matrix and scalar
+    private double[][] divide(double[][] matrix, double scalar){
+        double[][] ret = new double[matrix.length][matrix[0].length];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                ret[i][j] = matrix[i][j] / scalar;
+            }
         }
         return ret;
     }
@@ -1895,7 +1862,7 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
     // Element-wise multiplication between array and scalar
-    private double [] mul(short [] array, double scalar) {
+    private double[] mul(short [] array, double scalar) {
         double [] ret = new double [array.length];
         for (int i = 0; i < array.length; i++) {
             ret[i] = array[i] * scalar;
@@ -1916,46 +1883,66 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
     // Element-wise power of matrix by scalar
-    private Primitive64Store pow(Primitive64Store matrix, double expon) {
+    private double[][] pow(double[][] matrix, double expon) {
         // TODO: ojalgo CHECK - is the .size() the product of rows and cols
-        for (int i = 0; i < matrix.size(); i++){
-            matrix.set(i, Math.pow(matrix.get(i), expon));
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++) {
+                matrix[i][j] = Math.pow(matrix[i][j], expon);
+            }
         }
         return matrix;
     }
     // Element-wise logarithm of matrix, with base
-    private Primitive64Store log(Primitive64Store matrix, int log_base) {
-        for (long i = 0; i < matrix.size(); i++){
-            matrix.set(i, Math.log(matrix.get(i))/Math.log(log_base));
+    private double[][] log(double[][] matrix, int log_base) {
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++){
+                matrix[i][j] = Math.log(matrix[i][j]) / Math.log(log_base);
+            }
         }
         return matrix;
     }
     // Element-wise logarithm of matrix, natural log
-    private Primitive64Store log(Primitive64Store matrix) {
-        for (long i = 0; i < matrix.size(); i++){
-            matrix.set(i, Math.log(matrix.get(i)));
+    private double[][] log(double[][] matrix) {
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++){
+                matrix[i][j] = Math.log(matrix[i][j]);
+            }
         }
         return matrix;
     }
+    // Transpose a matrix
+    public double[][] transpose(double[][] matrix){
+        double[][] ret = createMatrix(matrix[0].length, matrix.length);
+        for (int i = 0; i < matrix[0].length; i++){
+            for (int j = 0; j < matrix.length; j++){
+                ret[i][j] = matrix[j][i];
+            }
+        }
+        return ret;
+    }
 
     // Sum of matrix
-    private double sum(Primitive64Store matrix) {
-        // TODO: see that size does what you think
+    private double sum(double[][] matrix) {
         double value = 0;
-        for (int i = 0; i < matrix.size(); i++){
-            value = value + matrix.get(i);
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                value = value + matrix[i][j];
+            }
         }
         return value;
     }
     // Mean of matrix
-    private double mean(Primitive64Store array) {
-        return sum(array)/array.size();
+    private double mean(double[][] array) {
+        return sum(array)/(array.length * array[0].length);
     }
     // Absolute of matrix
-    private double[] abs(Primitive64Store matrix){
-        double [] ret = new double [matrix.size()];
-        for (int i = 0; i < ret.length; i++) {
-            ret[i] = Math.abs(matrix.get(i));
+    private double[] abs(double[][] matrix){
+        double [] ret = new double [matrix.length * matrix[0].length];
+        int ret_count = 0;
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++) {
+                ret[ret_count++] = Math.abs(matrix[i][j]);
+            }
         }
         return ret;
     }
@@ -1985,10 +1972,12 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     // Get smallest value in the matrix
-    private double min(Primitive64Store matrix) {
-        double ret = matrix.get(0);
-        for (long i = 0; i < matrix.size(); i++){
-            ret = Math.min(matrix.get(i), ret);
+    private double min(double[][] matrix) {
+        double ret = matrix[0][0];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++) {
+                ret = Math.min(matrix[i][j], ret);
+            }
         }
         return ret;
     }
@@ -2000,10 +1989,12 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
     // Get largest value in the matrix
-    private double max(Primitive64Store matrix) {
-        double ret = matrix.get(0);
-        for (long i = 0; i < matrix.size(); i++){
-            ret = Math.max(matrix.get(i), ret);
+    private double max(double[][] matrix) {
+        double ret = matrix[0][0];
+        for (int i = 0; i < matrix.length; i++){
+            for (int j = 0; j < matrix[i].length; j++){
+                ret = Math.max(matrix[i][j], ret);
+            }
         }
         return ret;
     }
@@ -2037,30 +2028,6 @@ public class ScrollingActivity extends AppCompatActivity {
         double[] ret = new double[input_array.length];
         for (int i = 0; i < input_array.length; i++){
             ret[i] = input_array[i];
-        }
-        return ret;
-    }
-    // Converts Matrixstore to Primitive64Store
-    private Primitive64Store toPrimitive(MatrixStore matrix) {
-        Primitive64Store ret = Primitive64Store.FACTORY.make(matrix);
-        for (int i = 0; i < matrix.size(); i++) {
-            ret.set(i, matrix.get(i));
-        }
-        return ret;
-    }
-
-    // Converting between DenseMatrix and Primitive64Store (Deprecated)
-    private DenseMatrix convertPD(Primitive64Store temp){
-        DenseMatrix ret = new DenseMatrix((int) temp.countRows(), (int) temp.countColumns());
-        for (int i = 0; i < temp.size(); i ++){
-            ret.set(i, temp.get(i));
-        }
-        return ret;
-    }
-    private Primitive64Store convertDP(DenseMatrix temp) {
-        Primitive64Store ret = createMatrix(temp.rows, temp.cols);
-        for (int i = 0; i < temp.getValues().length; i ++){
-            ret.set(i, temp.getValues()[i]);
         }
         return ret;
     }

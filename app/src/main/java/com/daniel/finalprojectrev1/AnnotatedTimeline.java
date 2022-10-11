@@ -92,7 +92,7 @@ public class AnnotatedTimeline {
         l.setXOffset(5f);
     }
 
-    public void updatePlot(Context context, Primitive64Store data) {
+    public void updatePlot(Context context, double[][] data) {
         // Creating a wrapper for data to be plotted
         ArrayList<ArrayList<Entry>> dataPoints = new ArrayList<>();
         ArrayList<Drawable> icon_array = new ArrayList<>();
@@ -104,13 +104,13 @@ public class AnnotatedTimeline {
 
 
         // Populating the wrappers
-        for (int i = 0; i < data.countRows(); i++) {
+        for (int i = 0; i < data.length; i++) {
             // Temporary Entry array
             ArrayList<Entry> temp_entry = new ArrayList<>();
-            for (int j = 0; j < data.countColumns(); j++) {
+            for (int j = 0; j < data[i].length; j++) {
                 // Converting data to appropriate form
-                if (data.get(i, j) != 0) {
-                    Entry temp = new Entry((int) (data.get(i, j) * j), (float) (i + 0.5));
+                if (data[i][j] != 0) {
+                    Entry temp = new Entry((int) (data[i][j] * j), (float) (i + 0.5));
                     temp.setIcon(icon_array.get(i));
                     temp_entry.add(temp);
 //                    temp_entry.add(new Entry((int) (data.get(i, j) * j),  (float) (i + 0.5)));
@@ -120,7 +120,7 @@ public class AnnotatedTimeline {
         }
         // Create a dataset, and configure the properties
         ArrayList<ScatterDataSet> dataSets = new ArrayList<>();
-        for (int i = 0; i < data.countRows(); i++) {
+        for (int i = 0; i < data.length; i++) {
             // Loadingthe data into a dataset
             dataSets.add(new ScatterDataSet(dataPoints.get(i), this.event_classes[i]));
 

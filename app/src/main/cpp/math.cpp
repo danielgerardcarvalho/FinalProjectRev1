@@ -13,7 +13,7 @@ jdoubleArray math::matmul(JNIEnv *env, jdoubleArray m1, jdoubleArray m2, jint m1
     for (int i = 0; i < m1_rows; i++){
         loc_m1[i] = new double[m1_cols];
         for (int j = 0; j < m1_cols; j++){
-            loc_m1[i][j] = loc_a1[i+(j*m1_rows)];
+            loc_m1[i][j] = loc_a1[i*m1_cols+j];
         }
     }
     env->ReleaseDoubleArrayElements(m1, loc_a1, JNI_ABORT);
@@ -21,7 +21,7 @@ jdoubleArray math::matmul(JNIEnv *env, jdoubleArray m1, jdoubleArray m2, jint m1
     for (int i = 0; i < m2_rows; i++){
         loc_m2[i] = new double[m2_cols];
         for (int j = 0; j < m2_cols; j++){
-            loc_m2[i][j] = loc_a2[i+(j*m2_rows)];
+            loc_m2[i][j] = loc_a2[i*m2_cols+j];
         }
     }
     env->ReleaseDoubleArrayElements(m2, loc_a2, JNI_ABORT);
@@ -34,7 +34,7 @@ jdoubleArray math::matmul(JNIEnv *env, jdoubleArray m1, jdoubleArray m2, jint m1
             for (int k = 0; k < m2_rows; k++){
                 temp = temp + (loc_m1[i][k] * loc_m2[k][j]);
             }
-            temp_ret[i+(j*m1_rows)] = temp;
+            temp_ret[i*m2_cols+j] = temp;
         }
     }
 
@@ -62,7 +62,7 @@ jdoubleArray math::transpose(JNIEnv *env, jdoubleArray mat, jint mat_rows, jint 
     int temp_ret_count = 0;
     for (int i = 0; i < mat_rows; ++i) {
         for (int j = 0; j < mat_cols; ++j) {
-            temp_ret[temp_ret_count++] = loc_array[i*mat_cols + j];
+            temp_ret[temp_ret_count++] = loc_array[i + j*mat_rows];
         }
     }
     env->ReleaseDoubleArrayElements(mat, loc_array, JNI_ABORT);

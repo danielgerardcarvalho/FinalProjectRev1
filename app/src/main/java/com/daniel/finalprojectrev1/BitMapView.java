@@ -13,17 +13,17 @@ public class BitMapView extends View {
     public Bitmap bmp;
     private int [] shape;
 
-    public BitMapView(Context context, Primitive64Store data, int source_width) {
+    public BitMapView(Context context, double[][] data, int source_width) {
         super(context);
         constructBitMap(data, source_width);
     }
 
-    private void constructBitMap(Primitive64Store data, int source_width){
+    private void constructBitMap(double[][] data, int source_width){
         if (data != null) {
             paint.setStrokeWidth(1);
             // TODO: ojalgo CHECK see that countRows and countColumns does what you think
-            int rows = (int) data.countRows();
-            int cols = (int) data.countColumns();
+            int rows = (int) data.length;
+            int cols = (int) data[0].length;
 
             int[] arrayCol = new int[rows * cols];
             int counter = 0;
@@ -31,7 +31,7 @@ public class BitMapView extends View {
                 for (int j = 0; j < cols; j++) {
                     int value;
                     int color;
-                    value = 255 - (int) (data.get(i,j) * 255);
+                    value = 255 - (int) (data[i][j] * 255);
                     color = (255 << 24 | value << 16 | value << 8 | value); // ARGB_8888
 //                    color = ((value & 0x01f) | (value & 0x03f) << 5 | (value & 0x01f) << 11); // RGB_565
                     arrayCol[counter] = color;
@@ -46,9 +46,6 @@ public class BitMapView extends View {
         }
         bmp = Bitmap.createScaledBitmap(bmp, source_width, (int) (source_width*0.5), false);
     }
-
-    // TODO: Implement to add labels - try to add x-axis as well
-    private void constructLables(){}
 
     @Override
     protected void onDraw(Canvas canvas) {
