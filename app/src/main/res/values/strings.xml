@@ -135,6 +135,9 @@
     <string name="plotting_spectrogram">\tSpectrogram:</string>
     <string name="plotting_annotated_timeline">\tAnnotated Event Timeline:</string>
 
+    <!-- Apply Settings -->
+    <string name="apply_select">Apply</string>
+
     <!-- Preference Titles -->
     <string name="messages_header">Messages</string>
     <string name="sync_header">Sync</string>

@@ -68,29 +68,7 @@ public class ScrollingActivity extends AppCompatActivity {
     private boolean system_flag;
     private final double MIN_CONST = Math.pow(10, -20);
 
-    /* Model Import */
-    // model import constants
-    private static final String MODEL_DIR_LOC = Environment.getExternalStorageDirectory().toString()
-            + "/Project/dictionaries/";
-    private static final String MODEL_FILE_EXT = ".json";
-    // model import variables
-    private File model_import_file;
-
     /* Audio Capture */
-    // capture constants
-    private static final int[] AUDIO_SOURCES = {
-            MediaRecorder.AudioSource.MIC,
-            MediaRecorder.AudioSource.UNPROCESSED
-    };
-    private static final int AUDIO_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
-    private static final int AUDIO_FORMAT_INT8 = AudioFormat.ENCODING_PCM_8BIT;
-    private static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
-    private static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
-    private static final int AUDIO_MIN_FORMAT_SIZE = 1;
-    private final int CAP_QUEUE_SIZE = 5;
-    // input format options
-    private static final String UI_AUDIO_FORMAT_INT16 = "int16";
-    private static final String UI_AUDIO_FORMAT_FLOAT = "float";
     // audio capture object
     private AudioRecord audio_recorder;
     // audio capture multi-threading
@@ -140,43 +118,6 @@ public class ScrollingActivity extends AppCompatActivity {
     private boolean processing_plotting_flag;
     private boolean classifier_plotting_flag;
 
-
-    /* UI Associated Model Import Settings */
-    // Values
-    private int model_num_class_events;
-    private int model_clip_len;
-    private int model_num_overlaps;
-    private int model_snr_range_min;
-    private int model_snr_range_max;
-    private int model_num_training_samples;
-    private int model_num_inter_comp;
-
-    /* UI Associated Capture Settings */
-    // Values
-    private int cap_sample_rate;
-    private int cap_time_interval;
-    private int cap_buffer_size;
-    private boolean cap_file_import_flag = false;
-    private File cap_imported_file;
-    private FileInputStream cap_imported_file_stream;
-    private int cap_format;
-
-    /* UI Associated Processing Settings */
-    // Values
-    private int proc_fft_size;
-    private int proc_sample_rate;
-    private int proc_num_time_frames;
-    private int proc_resolution;
-    private double proc_window_time;
-    private double proc_hop_time;
-
-    /* UI Associated Classifier Settings */
-    // Values
-    private int classifier_fft_size;
-    private int classifier_num_classes;
-    private int classifier_num_inter_comp;
-    private int classifier_num_iters;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -189,52 +130,12 @@ public class ScrollingActivity extends AppCompatActivity {
         CollapsingToolbarLayout toolBarLayout = binding.toolbarLayout;
         toolBarLayout.setTitle(getTitle());
 
-        /* Configure User Selection Register */
-        ActivityResultLauncher<Intent> activity_launcher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK){
-//                    String file_loc = result.getData().getData().getPath().split(":")[1];
-//                    file_loc = file_loc.split(":")[1];
-                    assert result.getData() != null;
-                    cap_imported_file = new File(
-                            Environment.getExternalStorageDirectory().toString() +
-                                    "/" + result.getData().getData().getPath().split(":")[1]
-                    );
-                }
-            });
-
         /* Configure Runnables */
         configureRunnables();
-
 
         /* Floating Action Button Logic */
         FloatingActionButton fab = binding.fab;
         fab.setOnClickListener(view -> {
-
-            // Importing input user settings and checking if these settings are valid
-            boolean valid_flag = convertSettingInputs( model_filename_view, model_filename_marker_view,
-                    num_class_events_text, clip_len_text, num_overlaps_text, snr_range_min_text,
-                    snr_range_max_text, num_training_sample_text, num_inter_comp_text,
-                    cap_sample_rate_input, cap_time_interval_input, cap_format_input,
-                    proc_fft_size_input, proc_sample_rate_input, classifier_fft_size_input,
-                    classifier_num_classes_input, classifier_num_inter_comp_input,
-                    classifier_num_iters_input
-            );
-            // Update UI fields
-            uiFieldUpdate(model_filename_view, num_class_events_text, clip_len_text,
-                    num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                    num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
-                    cap_format_input, proc_fft_size_input, proc_sample_rate_input,
-                    proc_num_time_frames_input, proc_resolution_input, proc_window_time_input,
-                    proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
-                    classifier_num_inter_comp_input, classifier_num_iters_input
-            );
-            if (!valid_flag) {
-                Snackbar.make(view, "Settings are not valid", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-                return;
-            }
 
             // Check if already running
             if (system_flag){
@@ -261,6 +162,7 @@ public class ScrollingActivity extends AppCompatActivity {
                     stopCapture();
                 }
                 system_flag = false;
+
             } else {
                 // UI displays
                 Snackbar.make(view, "Starting system", Snackbar.LENGTH_LONG)
@@ -294,12 +196,6 @@ public class ScrollingActivity extends AppCompatActivity {
 
         /* Checking application permissions */
         checkAllPermissions();
-
-        /* Model Import Filename Update Logic */
-        modelFilenameUpdate(model_filename_view,  model_filename_marker_view, num_class_events_text,
-                clip_len_text, num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                num_training_sample_text
-        );
     }
 
     @Override
@@ -325,367 +221,6 @@ public class ScrollingActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // If this method breaks try removing the super.
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (data == null) {
-            return;
-        }
-        if (data.getClipData() == null) {
-            cap_imported_file = new File(
-                    Environment.getExternalStorageDirectory().toString() +
-                            "/" + data.getData().getPath().split(":")[1]
-            );
-//            cap_imported_file = new File (data.getData().getPath());
-        } else {
-            cap_imported_file = new File(data.getClipData().getItemAt(0).getUri().getPath());
-        }
-    }
-
-    private boolean convertSettingInputs(TextView model_filename_view, ImageView model_filename_marker_view,
-                                         EditText num_class_events_text, EditText clip_len_text,
-                                         EditText num_overlaps_text, EditText snr_range_min_text,
-                                         EditText snr_range_max_text,
-                                         EditText num_training_sample_text,
-                                         EditText num_inter_comp_text,
-                                         EditText cap_sample_rate_input,
-                                         EditText cap_time_interval_input,
-                                         Spinner cap_format_input, EditText proc_fft_size_input,
-                                         EditText proc_sample_rate_input,
-                                         EditText classifier_fft_size_input,
-                                         EditText classifier_num_classes_input,
-                                         EditText classifier_num_inter_comp_input,
-                                         EditText classifier_num_iters_input) {
-
-        /* Processing User Inputs */
-        // Model import settings
-        // TODO: need to add the checks for model import inputs, currently only the default settings
-        //  are used.
-        // - model import number of event classes
-        if (!TextUtils.isEmpty(num_class_events_text.getText())) {
-            model_num_class_events = Integer.parseInt(num_class_events_text.getText().toString());
-        } else {
-            model_num_class_events = Integer.parseInt(num_class_events_text.getHint().toString());
-        }
-        // - model import clip length
-        if (!TextUtils.isEmpty(clip_len_text.getText())) {
-            model_clip_len = Integer.parseInt(clip_len_text.getText().toString());
-        } else {
-            model_clip_len = Integer.parseInt(clip_len_text.getHint().toString());
-        }
-        // - model import number of overlaps
-        if (!TextUtils.isEmpty(num_overlaps_text.getText())) {
-            model_num_overlaps = Integer.parseInt(num_overlaps_text.getText().toString());
-        } else {
-            model_num_overlaps = Integer.parseInt(num_overlaps_text.getHint().toString());
-        }
-        // - model import snr range min
-        if (!TextUtils.isEmpty(snr_range_min_text.getText())) {
-            model_snr_range_min = Integer.parseInt(snr_range_min_text.getText().toString());
-        } else {
-            model_snr_range_min = Integer.parseInt(snr_range_min_text.getHint().toString());
-        }
-        // - model import snr range max
-        if (!TextUtils.isEmpty(snr_range_max_text.getText())) {
-            model_snr_range_max = Integer.parseInt(snr_range_max_text.getText().toString());
-        } else {
-            model_snr_range_max = Integer.parseInt(snr_range_max_text.getHint().toString());
-        }
-        // - model import number of training samples
-        if (!TextUtils.isEmpty(num_training_sample_text.getText())) {
-            model_num_training_samples = Integer.parseInt(num_training_sample_text.getText().toString());
-        } else {
-            model_num_training_samples = Integer.parseInt(num_training_sample_text.getHint().toString());
-        }
-        // model import number of internal components
-        if (!TextUtils.isEmpty(num_inter_comp_text.getText())) {
-            model_num_inter_comp = Integer.parseInt(num_inter_comp_text.getText().toString());
-        } else {
-            model_num_inter_comp = Integer.parseInt(num_inter_comp_text.getHint().toString());
-        }
-
-        // Capture settings
-        // - capture sample rate
-        if (!TextUtils.isEmpty(cap_sample_rate_input.getText())) {
-            cap_sample_rate = Integer.parseInt(cap_sample_rate_input.getText().toString());
-        } else {
-            cap_sample_rate = Integer.parseInt(cap_sample_rate_input.getHint().toString());
-        }
-        // - capture time interval
-        if (!TextUtils.isEmpty(cap_time_interval_input.getText())) {
-            cap_time_interval = Integer.parseInt(cap_time_interval_input.getText().toString());
-        } else {
-            cap_time_interval = model_clip_len;
-        }
-        // - capture format
-        cap_format = AUDIO_FORMAT_INT16;
-        String selected_audio_format = cap_format_input.getSelectedItem().toString();
-        if (selected_audio_format.matches(UI_AUDIO_FORMAT_INT16)) {
-            cap_format = AUDIO_FORMAT_INT16;
-        } else if (selected_audio_format.matches(UI_AUDIO_FORMAT_FLOAT)){
-            cap_format = AUDIO_FORMAT_FLOAT;
-        }
-
-        // Processing Settings
-        // - processing fft size
-        if (!TextUtils.isEmpty(proc_fft_size_input.getText())) {
-            proc_fft_size = Integer.parseInt(proc_fft_size_input.getText().toString());
-        } else {
-            proc_fft_size = Integer.parseInt(proc_fft_size_input.getHint().toString());
-        }
-        // - processing sample rate
-        if (!TextUtils.isEmpty(proc_sample_rate_input.getText())) {
-            proc_sample_rate = Integer.parseInt(proc_sample_rate_input.getText().toString());
-        }
-        else {
-            proc_sample_rate = cap_sample_rate;
-        }
-        // - processing number of time frames
-        proc_num_time_frames = cap_time_interval * proc_sample_rate;
-        // - processing resolution
-        proc_resolution = proc_sample_rate / proc_fft_size;
-        // - processing window time
-        proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
-        // - processing hop time
-        proc_hop_time = proc_window_time / 2.0;
-
-        // Classifier Settings
-        // - classifier fft size
-        if (!TextUtils.isEmpty(classifier_fft_size_input.getText())) {
-            classifier_fft_size = Integer.parseInt(classifier_fft_size_input.getText().toString());
-        } else {
-            classifier_fft_size = proc_fft_size / 2;
-        }
-        // - classifier number of  classes
-        if (!TextUtils.isEmpty(classifier_num_classes_input.getText())) {
-            classifier_num_classes = Integer.parseInt(classifier_num_classes_input.getText().toString());
-        } else {
-            classifier_num_classes = model_num_class_events;
-        }
-        // - classifier number of internal components
-        if (!TextUtils.isEmpty(classifier_num_inter_comp_input.getText())) {
-            classifier_num_inter_comp = Integer.parseInt(classifier_num_inter_comp_input.getText().toString());
-        } else {
-            classifier_num_inter_comp = model_num_inter_comp * model_num_training_samples;
-        }
-        // - classifier number of internal iterations
-        if (!TextUtils.isEmpty(classifier_num_iters_input.getText())) {
-            classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getText().toString());
-        } else {
-            classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getHint().toString());
-        }
-        // Number of internal components in NMF model, taken from imported data
-        classifier_num_inter_comp = model_num_inter_comp * model_num_training_samples;
-
-        // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
-        //  a system that states which settings are missing or in error. Therefore returning true
-        //  or false.
-
-        // TODO: possibly use this function return value and other booleans to check if system is
-        //  correctly configured, may have issue if running straight from default values.
-        isValidModelFilename(model_filename_view, model_filename_marker_view);
-
-        return true;
-    }
-
-    private void modelFilenameUpdate(TextView model_filename_view, ImageView model_filename_marker_view,
-                                     EditText num_class_events_text, EditText clip_len_text,
-                                     EditText num_overlaps_text, EditText snr_range_min_text,
-                                     EditText snr_range_max_text, EditText num_training_sample_text){
-
-        // Updating model filename
-        num_class_events_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-        clip_len_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-        num_overlaps_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-        snr_range_min_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-        snr_range_max_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-        num_training_sample_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-
-    }
-
-    private boolean isValidModelFilename(TextView filename, ImageView marker) {
-        File temp = new File(MODEL_DIR_LOC + filename.getText() + MODEL_FILE_EXT);
-        if (temp.exists()){
-            Log.v("ModelImportFile", "The file exists");
-            marker.setImageResource(R.drawable.ic_baseline_check_circle_24);
-            return true;
-
-        } else {
-            Log.v("ModelImportFile", "Current filename does not exist");
-            marker.setImageResource(R.drawable.ic_baseline_remove_circle_24);
-            return false;
-        }
-    }
-
-    private void uiFieldUpdate(TextView model_filename_view, EditText num_class_events_text,
-                               EditText clip_len_text, EditText num_overlaps_text,
-                               EditText snr_range_min_text, EditText snr_range_max_text,
-                               EditText num_training_sample_text, EditText cap_sample_rate_input,
-                               EditText cap_time_interval_input, Spinner cap_format_input,
-                               EditText proc_fft_size_input, EditText proc_sample_rate_input,
-                               EditText proc_num_time_frames_input, EditText proc_resolution_input,
-                               EditText proc_window_time_input, EditText proc_hop_time_input,
-                               EditText classifier_fft_size_input,
-                               EditText classifier_num_classes_input,
-                               EditText classifier_num_inter_comp_input,
-                               EditText classifier_num_iters_input){
-        // Update the text field of all input spaces
-        // Model import
-        num_class_events_text.setText(String.format("%d", model_num_class_events));
-        clip_len_text.setText(String.format("%d", model_clip_len));
-        num_overlaps_text.setText(String.format("%d", model_num_overlaps));
-        snr_range_min_text.setText(String.format("%d", model_snr_range_min));
-        snr_range_max_text.setText(String.format("%d", model_snr_range_max));
-        num_training_sample_text.setText(String.format("%d", model_num_training_samples));
-        model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                num_class_events_text.getText().toString(),
-                clip_len_text.getText().toString(),
-                num_overlaps_text.getText().toString(),
-                snr_range_min_text.getText().toString(),
-                snr_range_max_text.getText().toString(),
-                num_training_sample_text.getText().toString()
-        ));
-        // Capture
-        cap_sample_rate_input.setText(String.format("%d", cap_sample_rate));
-        cap_time_interval_input.setText(String.format("%d", cap_time_interval));
-        if (cap_format == AUDIO_FORMAT_INT16) {
-            cap_format_input.setSelection(0);
-        } else if (cap_format == AUDIO_FORMAT_FLOAT) {
-            cap_format_input.setSelection(1);
-        }
-        else {
-            cap_format_input.setSelection(0);
-        }
-        // Processing
-        proc_fft_size_input.setText(String.format("%d", proc_fft_size));
-        proc_sample_rate_input.setText(String.format("%d", proc_sample_rate));
-        proc_num_time_frames_input.setText(String.format("%d", proc_num_time_frames));
-        proc_resolution_input.setText(String.format("%d", proc_resolution));
-        proc_window_time_input.setText(String.format("%f", proc_window_time));
-        proc_hop_time_input.setText(String.format("%f", proc_hop_time));
-        // Classifier
-        classifier_fft_size_input.setText(String.format("%d", classifier_fft_size));
-        classifier_num_classes_input.setText(String.format("%d", classifier_num_classes));
-        classifier_num_inter_comp_input.setText(String.format("%d", classifier_num_inter_comp));
-        classifier_num_iters_input.setText(String.format("%d", classifier_num_iters));
     }
 
     private void configureRunnables(){
@@ -852,22 +387,6 @@ public class ScrollingActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
-    }
-
-    private void getUserSelectedFile(ActivityResultLauncher<Intent> activity_launcher){
-
-//        // Old version (Deprecated by google) - working
-//        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-//        intent.addCategory(Intent.CATEGORY_OPENABLE);
-//        intent.setType("*/*");
-//        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-//        startActivityForResult(intent, 0);
-
-        // New version - working
-        Intent file_intent = new Intent(Intent.ACTION_GET_CONTENT);
-        file_intent.addCategory(Intent.CATEGORY_OPENABLE);
-        file_intent.setType("*/*");
-        activity_launcher.launch(file_intent);
     }
 
     private void startCapture(){
