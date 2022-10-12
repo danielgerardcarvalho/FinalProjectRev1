@@ -177,7 +177,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Configure processing system
                 configureProcessing();
                 // Configure classifier system
-                configureClassifier(model_filename_view, model_filename_marker_view);
+                configureClassifier(Globals.model_filename_view, Globals.model_filename_marker_view);
 
                 // Starting the sub-system threads
 //                startCapture();
@@ -771,24 +771,6 @@ public class ScrollingActivity extends AppCompatActivity {
     private void configureClassifier(TextView model_filename_view,
                                      ImageView model_filename_marker_view) {
         /* Configures classifier variables before the start of any sub-systems*/
-
-        // Importing model file
-        classifier_imported_nmf_model = null;
-        if (isValidModelFilename(model_filename_view, model_filename_marker_view)) {
-            classifier_imported_nmf_model=importModelFile(model_filename_view.getText().toString());
-        }
-        if (classifier_imported_nmf_model == null) {
-            Log.e("Classifier", "The import failed somewhere, the returned object is null");
-            // TODO: Handle failures better, maybe inform user and revert to default values?
-            return;
-        }
-        Log.v("Classifier", String.format("Imported values:" +
-                        "\n\tW1 (shape): (%d,%d)\n\tW2 (shape): (%d, %d)\n\tW1 example value: %f" +
-                        "\n\tW2 example value: %f",
-                classifier_imported_nmf_model.W1.length, classifier_imported_nmf_model.W1[0].length,
-                classifier_imported_nmf_model.W2.length, classifier_imported_nmf_model.W2[0].length,
-                classifier_imported_nmf_model.W1[0][0], classifier_imported_nmf_model.W2[0][0]));
-
         // Input variable clearing / initialisation
         classifier_data = null;
         classifier_data_prev = null;
@@ -807,6 +789,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private void stopClassifier() {
         // Stopping classifier thread
+        classifier_imported_nmf_model = null;
         mt_classifier_flag = false;
         mt_classifier_thread.interrupt();
     }

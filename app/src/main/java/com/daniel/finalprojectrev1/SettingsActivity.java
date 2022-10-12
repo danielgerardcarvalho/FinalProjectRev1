@@ -524,6 +524,23 @@ public class SettingsActivity extends AppCompatActivity {
         classifier_num_iters_input.setText(String.format("%d", Globals.classifier_num_iters));
     }
 
+    // Importing model file
+    classifier_imported_nmf_model = null;
+        if (isValidModelFilename(model_filename_view, model_filename_marker_view)) {
+        classifier_imported_nmf_model=importModelFile(model_filename_view.getText().toString());
+    }
+        if (classifier_imported_nmf_model == null) {
+        Log.e("Classifier", "The import failed somewhere, the returned object is null");
+        // TODO: Handle failures better, maybe inform user and revert to default values?
+        return;
+    }
+        Log.v("Classifier", String.format("Imported values:" +
+                "\n\tW1 (shape): (%d,%d)\n\tW2 (shape): (%d, %d)\n\tW1 example value: %f" +
+                "\n\tW2 example value: %f",
+    classifier_imported_nmf_model.W1.length, classifier_imported_nmf_model.W1[0].length,
+    classifier_imported_nmf_model.W2.length, classifier_imported_nmf_model.W2[0].length,
+    classifier_imported_nmf_model.W1[0][0], classifier_imported_nmf_model.W2[0][0]));
+
 
 //    public static class SettingsFragment extends PreferenceFragmentCompat {
 //        @Override
