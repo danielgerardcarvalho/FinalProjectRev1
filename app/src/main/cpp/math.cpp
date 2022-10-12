@@ -2,6 +2,7 @@
 // Created by Daniel on 10/11/2022.
 //
 #include <jni.h>
+#include <vector>
 #include "math.h"
 
 jdoubleArray math::matmul(JNIEnv *env, jdoubleArray m1, jdoubleArray m2, jint m1_rows, jint m1_cols, jint m2_rows, jint m2_cols){
@@ -91,4 +92,70 @@ jdoubleArray math::add(JNIEnv *env, jdoubleArray m1, jdoubleArray m2, jint m_row
     env->SetDoubleArrayRegion(ret, 0, matrix_size, (const jdouble*) temp_ret);
     delete[] temp_ret;
     return ret;
+}
+
+jobjectArray math::matmulDirect(JNIEnv *env, jobjectArray m1, jobjectArray m2, jint m1_rows, jint m1_cols, jint m2_rows, jint m2_cols){
+    // Converting jdoubleArray to matrix vectors
+//    std::vector<std::vector<double>> loc_m1(m1_rows);
+    double* loc_m1[m1_rows];
+    for (int i = 0; i < m1_rows; i++) {
+        // Setting size of each row
+        loc_m1[i] = new double[m1_cols];
+        jdoubleArray temp_matrix = static_cast<jdoubleArray>(env->GetObjectArrayElement(m1, i));
+        jdouble *temp_data = env->GetDoubleArrayElements(temp_matrix, 0);
+        for (int j = 0; j < m1_cols; j++){
+            loc_m1[i][j] = temp_data[j];
+        }
+        env->ReleaseDoubleArrayElements(temp_matrix, temp_data, 0);
+    }
+    double* loc_m2[m2_rows];
+    for (int i = 0; i < m2_rows; i++) {
+        // Setting size of each row
+        loc_m2[i] = new double[m2_cols];
+        jdoubleArray temp_matrix = static_cast<jdoubleArray>(env->GetObjectArrayElement(m2, i));
+        jdouble *temp_data = env->GetDoubleArrayElements(temp_matrix, 0);
+        for (int j = 0; j < m2_cols; j++){
+            loc_m2[i][j] = temp_data[j];
+        }
+        env->ReleaseDoubleArrayElements(temp_matrix, temp_data, 0);
+    }
+
+    // Performing matmul
+    double* temp_ret[m1_rows];
+    for (int i = 0; i < m1_rows; i++){
+        temp_ret[i] = new double[m2_cols];
+        for (int j = 0; j < m2_cols; j++){
+            double temp = 0.0;
+            for (int k = 0; k < m2_rows; k++){
+                temp = temp + (loc_m1[i][k] * loc_m2[k][j]);
+            }
+            temp_ret[i][j] = temp;
+        }
+    }
+
+    // Releasing the local matrices
+    for (int i = 0; i < m1_rows; i++){
+        delete [] loc_m1[i];
+    }
+    for (int i = 0; i < m2_rows; i++){
+        delete [] loc_m2[i];
+    }
+
+    // Constructing jobjectArray structure
+    jdoubleArray ret_array = env->NewDoubleArray(m2_cols);
+    jobjectArray ret_matrix = env->NewObjectArray(m1_rows, env->GetObjectClass(ret_array), nullptr);
+    // Filling the jobjectArray
+    for (int i = 0; i < m1_rows; i++) {
+        env->SetDoubleArrayRegion(ret_array, 0, m2_cols, temp_ret[i]);
+        env->SetObjectArrayElement(ret_matrix, i, ret_array);
+        // Allocate a new spot in memory for the next array
+        if(i != m1_rows-1) {
+            ret_array = env->NewDoubleArray(m2_cols);
+        }
+    }
+    // Release matmul matrix, vectors clear themselves
+    for (int i = 0; i < m1_rows; i++){
+        delete[] temp_ret[i];
+    }
+    return ret_matrix;
 }

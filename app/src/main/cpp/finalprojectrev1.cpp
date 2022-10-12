@@ -25,6 +25,12 @@ Java_com_daniel_finalprojectrev1_NMF_matmul(JNIEnv *env, jobject, jdoubleArray m
     return math().matmul(env, m1, m2, mr1, mc1, mr2, mc2);
 };
 extern "C"
+JNIEXPORT jobjectArray
+JNICALL
+Java_com_daniel_finalprojectrev1_NMF_matmulDirect(JNIEnv *env, jobject, jobjectArray m1, jobjectArray m2, jint mr1, jint mc1, jint mr2, jint mc2){
+    return math().matmulDirect(env, m1, m2, mr1, mc1, mr2, mc2);
+};
+extern "C"
 JNIEXPORT jdoubleArray
 JNICALL
 Java_com_daniel_finalprojectrev1_NMF_transpose(JNIEnv *env, jobject, jdoubleArray mat, jint mat_rows, jint mat_cols){

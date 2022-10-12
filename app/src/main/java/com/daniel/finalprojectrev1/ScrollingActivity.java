@@ -1378,7 +1378,14 @@ public class ScrollingActivity extends AppCompatActivity {
             // Loading the data into the nmf class object
             nmf.loadV1(classifier_data);
             // Starting nmf calculation
-            nmf.start();
+            try{
+                nmf.start();
+            } catch (InterruptedException e){
+                e.printStackTrace();
+                Log.v("Classifier", "Interrupt Occured, Stopping Thread");
+                stopClassifier();
+                return;
+            }
             // Retrieving results from nmf class object
             double[][] V2_output = nmf.getV2();
             // Basic thresholding implementation

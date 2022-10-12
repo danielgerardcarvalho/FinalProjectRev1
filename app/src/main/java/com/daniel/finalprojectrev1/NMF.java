@@ -66,6 +66,12 @@ public class NMF {
     private Activity activity;
     private TextView progress_update_indicator;
 
+    // Multi-threading variables
+    private double[][] mt_update_v1_est_val;
+    private double[][] mt_update_denom_val;
+    private double[][] mt_update_numer_val;
+
+    /* Constructor */
     public NMF(int f, int n, int e, int k, int iter_limit){
         // Initialising the configuration settings
         this.f = f;
@@ -92,8 +98,9 @@ public class NMF {
         progress_update_indicator = null;
     }
 
+
     /* Control methods */
-    public void start() {
+    public void start() throws InterruptedException {
         // Starts the classes operations
         this.operation_flag = true;
         // Creating operation variables
@@ -107,7 +114,7 @@ public class NMF {
         this.operation_flag = false;
     }
 
-    public void continueRun(){
+    public void continueRun() throws InterruptedException {
         this.operation_flag = true;
         run();
     }
@@ -123,8 +130,9 @@ public class NMF {
         this.operation_flag = false;
     }
 
+
     /* Primary methods */
-    private void run() {
+    private void run() throws InterruptedException {
         // TODO: could initialise several H matrices and use one that achieves best results
         //  or average the results between them. Will this really help? obviouse computation and
         //  storage burden. Maybe different binarisations. Don't need multiple runs for that!
@@ -135,19 +143,27 @@ public class NMF {
         initH();
 
         while (curr_iter_num < this.iter_limit && operation_flag) {
+            // Calculate the error
+            Thread temp = new Thread(()->calcError_mt());
+            temp.start();
             // Update the matrices
             update();
             // Calculate the error
-            calcError();
+            temp.join();
+//            calcError();
             // Progress display, giving error and current iteration number and total iterations
             if (curr_iter_num % 1 == 0){
+                // Update UI
                 if (activity != null && progress_update_indicator != null) {
                     activity.runOnUiThread(() -> progress_update_indicator.setText(
                             activity.getText(R.string.progress_indicator_string) +
                                     String.format("\t%d / %d", curr_iter_num + 1, iter_limit)));
                 }
+                // Log progress
                 Log.v("ClassifierNMF", String.format("Iteration: %d / %d, error: %f",
                         curr_iter_num, this.iter_limit, this.error.get(this.error.size()-1)));
+                // Check for interrupt exception
+                Thread.sleep(1);
             }
             curr_iter_num++;
         }
@@ -156,37 +172,57 @@ public class NMF {
         // Calculating V2, V2 = W2 x H
         // TODO: CONVERTED C++ FUNCTION
 //        this.W2.multiply(this.H, this.V2);
-        this.V2 = matmul_j(this.W2, this.H);
+        this.V2 = matmul_jd(this.W2, this.H);
         Log.v("NMFRun", String.format("Size of A: (%d, %d), Size of B(%d, %d), Size of C (%d, %d)", this.W2.length, this.W2[0].length, this.H.length, this.H[0].length, this.V2.length, this.V2[0].length));
     }
 
-    // TODO: improve - high
     private void update() {
-        // NOTE: Current implementation
         // Kullback-Leibler Multiplicative Update Rule
         // Pre-allocating data
-        double[][] V1_estimate = new double[this.W1.length][this.H[0].length];
-        double[][] numerator = new double[this.W1[0].length][this.V1[0].length];
-        double[][] denominator = new double[this.W1[0].length][this.V1[0].length];
-        // Calculating the V1 estimate TODO:CONVERT TO C++
-        double[][] temp = {{1,1},{2,2},{3,3}};
-        double[][] p1 = transpose(temp);
-        double[][] p2 = matmul_j(temp, p1);
+        double[][] V1_estimate;// = new double[this.W1.length][this.H[0].length];
+//        double[][] numerator;// = new double[this.W1[0].length][this.V1[0].length];
+        double[][] denominator;// = new double[this.W1[0].length][this.V1[0].length];
+        mt_update_v1_est_val = new double[this.W1.length][this.H[0].length];
+//        mt_update_numer_val = new double[this.W1[0].length][this.V1[0].length];
+        mt_update_denom_val = new double[this.W1[0].length][this.V1[0].length];
+
+        // Calculating the V1 estimate
 //        this.W1.multiply(this.H, V1_estimate);
-        V1_estimate = matmul_j(this.W1, this.H);
-//        V1_estimate = toPrimitive(V1_estimate.add(MIN_CONST));
+//        double[][] V1_estimate = matmul_jd(this.W1, this.H);
+        Thread v1_est_thread = new Thread( () -> update_v1_est_mt(this.W1, this.H));
+        v1_est_thread.start();
 
-        // Calculating the numerator TODO: CONVERT TO C++
-        (this.W1.transpose()).multiply(divide(this.V1, V1_estimate), numerator);
-//        numerator = matmul_j(toPrimitive(this.W1.transpose()), divide(this.V1, V1_estimate));
+        // Calculating the denominator
+//        (this.W1.transpose()).multiply(this.ones, denominator);
+//        double[][] denominator = matmul_jd(transpose(this.W1), this.ones);
+        Thread denom_thread = new Thread( () -> update_denominator_mt(this.W1, this.ones));
+        denom_thread.start();
 
-        // Calculating the denominator TODO: CONVERT TO C++
-        (this.W1.transpose()).multiply(this.ones, denominator);
-//        denominator = matmul_j(toPrimitive(this.W1.transpose()), this.ones);
+        // Wait for thread join
+        try {
+            v1_est_thread.join();
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
+        V1_estimate = mt_update_v1_est_val;
 
-        // TODO: Check if the min_const add to denominator is needed
+        // Calculating the numerator
+//        (this.W1.transpose()).multiply(divide(this.V1, V1_estimate), numerator);
+        double[][] numerator = matmul_jd(transpose(this.W1), divide(this.V1, V1_estimate));
+//        Thread numer_thread = new Thread(() -> update_numerator_mt(this.W1, this.V1, V1_estimate));
+
+
+        // Wait for threads to synchronise
+        try {
+            denom_thread.join();
+//            numer_thread.join();
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
+//        numerator = mt_update_numer_val;
+        denominator = mt_update_denom_val;
+
         this.H = mul(this.H, (divide(numerator, denominator)));
-
 //        // Kullback-Leibler Multiplicative Update Rule
 //        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.f, this.n);
 //        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.k, this.n);
@@ -213,12 +249,20 @@ public class NMF {
 //                denominator.countRows(), denominator.countColumns(), V1_estimate.countRows(),
 //                V1_estimate.countColumns()));
     }
+    private void update_numerator_mt(double[][] w1, double[][] v1, double[][] v1_est){
+        mt_update_numer_val = matmul_jd(transpose(w1), divide(v1, v1_est));
+    }
+    private void update_denominator_mt(double[][] w1, double[][] ones){
+        mt_update_denom_val = matmul_jd(transpose(w1), ones);
+    }
+    private void update_v1_est_mt(double[][] w1, double[][] h) {
+        mt_update_v1_est_val = matmul_jd(w1, h);
+    }
 
-    // TODO: improve - high
     private void calcError() {
         // NOTE: current implementation
 //        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H).add(this.MIN_CONST));
-        double[][] V1_est = add(matmul_j(this.W1, this.H), this.MIN_CONST);
+        double[][] V1_est = add(matmul_jd(this.W1, this.H), this.MIN_CONST);
         double[][] deviation_log = log(divide(this.V1, V1_est));
         double[][] deviation = mul(this.V1, deviation_log);
         error.add(sum(add(deviation,sub(V1_est,this.V1))));
@@ -248,6 +292,16 @@ public class NMF {
 //        Primitive64Store dif = toPrimitive(V1_estimate.subtract(this.V1));
 //        Primitive64Store div_dif = log(divide(this.V1, V1_estimate), 10);
 //        error.add(sum(toPrimitive(this.V1.multiply(div_dif).add(dif))));
+    }
+    private void calcError_mt() {
+//        double [][] p1 = {{1,1},{2,2},{3,3}};
+//        double [][] p2 = {{1,1,1},{2,2,2}};
+//        double [][] p4 = matmul_j(p1, p2);
+//        double [][] p3 = matmul_jd(p1, p2);
+        double[][] V1_est = add(matmul_jd(this.W1, this.H), this.MIN_CONST);
+        double[][] deviation_log = log(divide(this.V1, V1_est));
+        double[][] deviation = mul(this.V1, deviation_log);
+        error.add(sum(add(deviation,sub(V1_est,this.V1))));
     }
 
     /* Data initialisation and loading methods */
@@ -282,11 +336,13 @@ public class NMF {
         this.final_training_error = training_error;
     }
 
+
     /* Set methods */
     public void setProgressUpdateVars(Activity act, TextView textV) {
         this.activity = act;
         this.progress_update_indicator = textV;
     }
+
 
     /* Get methods */
     public double[][] getV1(){
@@ -495,6 +551,14 @@ public class NMF {
         return ret;
     }
     public native double[] matmul(double[] mat1, double[] mat2, int mat1_rows, int mat1_cols,
+                                  int mat2_rows, int mat2_cols);
+
+    public double[][] matmul_jd(double[][] matrix1, double[][] matrix2){
+        double [][] ret = matmulDirect(matrix1, matrix2, matrix1.length,
+                matrix1[0].length, matrix2.length, matrix2[0].length);
+        return ret;
+    }
+    public native double[][] matmulDirect(double[][] mat1, double[][] mat2, int mat1_rows, int mat1_cols,
                                   int mat2_rows, int mat2_cols);
 
     // TRANSPOSE
