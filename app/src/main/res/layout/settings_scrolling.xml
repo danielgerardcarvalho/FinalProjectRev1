@@ -1,0 +1,686 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context=".ScrollingActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
+
+        <!-- IMPORT SETTINGS -->
+
+        <TextView
+            android:id="@+id/import_settings_heading_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/model_import_settings_title"
+            android:textAlignment="viewStart"
+            android:textAllCaps="true"
+            android:textColor="@color/heading_2"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/view_model_num_event_classes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/model_num_event_classes"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_model_import_num_event_classes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="5"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_model_num_overlaps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/model_num_overlaps"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_model_import_num_overlaps"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="2"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_model_clip_len"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/model_clip_len"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_model_import_clip_len"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="15"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_model_snr_range"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/model_snr_range"
+                android:textColor="@color/heading_1" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/input_model_import_snr_range_min"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:autoText="false"
+                    android:ems="10"
+                    android:inputType="numberSigned|number"
+                    android:singleLine="true"
+                    android:hint="30"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/input_model_import_snr_range_max"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:autoText="false"
+                    android:ems="10"
+                    android:inputType="numberSigned|number"
+                    android:singleLine="true"
+                    android:hint="40"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/view_model_training_size"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/model_training_size"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_model_import_training_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="5"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_model_num_components"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/model_num_components"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_model_import_num_components"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="50"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_model_num_iterations"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/model_num_iterations"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_model_import_num_iterations"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:focusable="false"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="500"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/import_model_filename_heading_view"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:text="@string/model_filename_title"
+                android:textColor="@color/heading_1"
+                android:textStyle="italic" />
+
+            <ImageView
+                android:id="@+id/import_model_filename_marker_view"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@string/model_filename_marker" />
+
+
+            <Space
+                android:layout_width="24dp"
+                android:layout_height="24dp" />
+
+            <TextView
+                android:id="@+id/import_model_filename_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="filename"
+                android:textColor="@color/heading_2"
+                android:textStyle="italic" />
+
+
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
+
+        <!-- CAPTURE SETTINGS -->
+
+        <TextView
+            android:id="@+id/cap_setting_heading_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/cap_settings_title"
+            android:textAlignment="viewStart"
+            android:textAllCaps="true"
+            android:textColor="@color/heading_2"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+<!--            <Switch-->
+<!--                android:id="@+id/input_cap_file_import"-->
+<!--                android:layout_width="170dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="@string/cap_import_file"-->
+<!--                android:textStyle="italic"/>-->
+            <TextView
+                android:id="@+id/view_file_import"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cap_import_file"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1"
+                android:layout_weight="1"
+            />
+            <Button
+                android:id="@+id/input_cap_file_import_select"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:dependency="@+id/input_cap_file_import"
+                android:text="@string/cap_import_file_select"
+                android:textAlignment="center" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/view_cap_sample_rate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cap_sample_rate"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_cap_sample_rate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="22050"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_cap_time_interval"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cap_time_interval"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_cap_time_interval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:hint="optional - (default) Length of clip"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_cap_format"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cap_format"
+                android:textColor="@color/heading_1" />
+
+            <Spinner
+                android:id="@+id/input_cap_format_option"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:entries="@array/array_cap_formats"
+                android:spinnerMode="dropdown" />
+
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
+
+        <!-- PROCESSING SETTINGS -->
+
+        <TextView
+            android:id="@+id/proc_setting_heading_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/proc_settings_title"
+            android:textAlignment="viewStart"
+            android:textAllCaps="true"
+            android:textColor="@color/heading_2"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/view_proc_fft_size"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_fft_size"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_fft_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="1024"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_sample_rate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_sample_rate"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_sample_rate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:inputType="number"
+                android:singleLine="true"
+                android:hint="optional - (default) Capture sample rate"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_num_time_frames"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_num_time_frames"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_num_time_frames"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="Import clip length x FFT sample rate"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_resolution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_resolution"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_resolution"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="FFT sample rate / FFT size"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_window_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_window_time"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_window_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="FFT size / FFT sample rate"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_proc_hop_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/proc_hop_time"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_proc_hop_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:focusable="false"
+                android:ems="10"
+                android:hint="Window time / 2"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
+
+        <!-- CLASSIFIER SETTINGS -->
+
+        <TextView
+            android:id="@+id/classifier_setting_heading_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/classifier_settings_title"
+            android:textAlignment="viewStart"
+            android:textAllCaps="true"
+            android:textColor="@color/heading_2"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/view_classifier_fft_size"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/classifier_fft_size"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_classifier_fft_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:hint="optional - (default) Processing FFT size / 2"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_classifier_num_classes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/classifier_num_classes"
+                android:textAlignment="textStart"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_classifier_num_classes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:hint="optional - (default) Number of event classes"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_classifier_num_inter_comp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/classifier_num_inter_comp"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_classifier_num_inter_comp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:focusable="false"
+                android:hint="Number of internal components x Number of training samples"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/view_classifier_num_iters"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/classifier_num_iters"
+                android:textColor="@color/heading_1" />
+
+            <EditText
+                android:id="@+id/input_classifier_num_iters"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autoText="false"
+                android:ems="10"
+                android:hint="100"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
+
+
+        <!-- PLOTTING SECTION -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/plotting_heading_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/plotting_title"
+                android:textAlignment="viewStart"
+                android:textAllCaps="true"
+                android:textColor="@color/heading_2"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/view_progress_indicator"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/progress_indicator_string"
+                android:textAlignment="viewStart"
+                android:textColor="@color/heading_2"
+                android:textStyle="italic" />
+
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/view_plotting_time_domain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/plotting_time_domain"
+            android:textColor="@color/heading_1"
+            android:visibility="invisible" />
+
+
+        <ImageView
+            android:id="@+id/imageView0"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="5dp" />
+
+        <TextView
+            android:id="@+id/view_plotting_spectrogram"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/plotting_spectrogram"
+            android:textColor="@color/heading_1"
+            android:visibility="invisible" />
+
+        <ImageView
+            android:id="@+id/imageView1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="5dp" />
+
+        <TextView
+            android:id="@+id/view_plotting_timeline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/plotting_annotated_timeline"
+            android:textColor="@color/heading_1"
+            android:visibility="invisible"/>
+
+        <ImageView
+            android:id="@+id/imageView2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <com.github.mikephil.charting.charts.ScatterChart
+            android:id="@+id/plot"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:visibility="invisible"/>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="26dp" />
+
+
+        <!--        <TextView-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_margin="@dimen/text_margin"-->
+<!--            android:text="@string/large_text" />-->
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
