@@ -18,62 +18,64 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.preference.PreferenceFragmentCompat;
 
+import com.daniel.finalprojectrev1.databinding.SettingsActivityBinding;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.gson.Gson;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.Reader;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    // TODO: declaring the variables locally to reduce memory use
-    /* Model Import Setting Inputs */
-    TextView model_filename_view = (TextView) findViewById(R.id.import_model_filename_view);
-    ImageView model_filename_marker_view = (ImageView) findViewById(R.id.import_model_filename_marker_view);
-    EditText num_class_events_text = (EditText) findViewById(R.id.input_model_import_num_event_classes);
-    EditText clip_len_text = (EditText) findViewById(R.id.input_model_import_clip_len);
-    EditText num_overlaps_text = (EditText) findViewById(R.id.input_model_import_num_overlaps);
-    EditText snr_range_min_text = (EditText) findViewById(R.id.input_model_import_snr_range_min);
-    EditText snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
-    EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
-    EditText num_inter_comp_text = (EditText) findViewById(R.id.input_model_import_num_components);
-
-    // TODO: declaring the variables locally to reduce memory use
-    /* Capture Setting Inputs */
-    EditText cap_sample_rate_input = (EditText) findViewById(R.id.input_cap_sample_rate);
-    EditText cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
-    Button cap_file_import_select_input = (Button) findViewById(R.id.input_cap_file_import_select);
-    Spinner cap_format_input = (Spinner) findViewById(R.id.input_cap_format_option);
-
-    // TODO: declaring the variables locally to reduce memory use
-    /* Processing Setting Inputs */
-    EditText proc_fft_size_input = (EditText) findViewById(R.id.input_proc_fft_size);
-    EditText proc_sample_rate_input = (EditText) findViewById(R.id.input_proc_sample_rate);
-    EditText proc_num_time_frames_input = (EditText) findViewById(R.id.input_proc_num_time_frames);
-    EditText proc_resolution_input = (EditText) findViewById(R.id.input_proc_resolution);
-    EditText proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
-    EditText proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
-
-    // TODO: declaring the variables locally to reduce memory use
-    /* Classifier Setting Inputs */
-    EditText classifier_fft_size_input = (EditText) findViewById(R.id.input_classifier_fft_size);
-    EditText classifier_num_classes_input = (EditText) findViewById(R.id.input_classifier_num_classes);
-    EditText classifier_num_inter_comp_input = (EditText) findViewById(R.id.input_classifier_num_inter_comp);
-    EditText classifier_num_iters_input = (EditText) findViewById(R.id.input_classifier_num_iters);
-
-    /* Apply Setting Button */
-    Button apply_settings_button = (Button) findViewById(R.id.apply_select);
+    private SettingsActivityBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.settings_activity);
-        if (savedInstanceState == null) {
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.settings, new SettingsFragment())
-                    .commit();
-        }
+
+        binding = SettingsActivityBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        // TODO: declaring the variables locally to reduce memory use
+        /* Model Import Setting Inputs */
+        TextView model_filename_view = (TextView) findViewById(R.id.import_model_filename_view);
+        ImageView model_filename_marker_view = (ImageView) findViewById(R.id.import_model_filename_marker_view);
+        EditText num_class_events_text = (EditText) findViewById(R.id.input_model_import_num_event_classes);
+        EditText clip_len_text = (EditText) findViewById(R.id.input_model_import_clip_len);
+        EditText num_overlaps_text = (EditText) findViewById(R.id.input_model_import_num_overlaps);
+        EditText snr_range_min_text = (EditText) findViewById(R.id.input_model_import_snr_range_min);
+        EditText snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
+        EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
+        EditText num_inter_comp_text = (EditText) findViewById(R.id.input_model_import_num_components);
+
+        // TODO: declaring the variables locally to reduce memory use
+        /* Capture Setting Inputs */
+        EditText cap_sample_rate_input = (EditText) findViewById(R.id.input_cap_sample_rate);
+        EditText cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
+        Button cap_file_import_select_input = (Button) findViewById(R.id.input_cap_file_import_select);
+        Spinner cap_format_input = (Spinner) findViewById(R.id.input_cap_format_option);
+
+        // TODO: declaring the variables locally to reduce memory use
+        /* Processing Setting Inputs */
+        EditText proc_fft_size_input = (EditText) findViewById(R.id.input_proc_fft_size);
+        EditText proc_sample_rate_input = (EditText) findViewById(R.id.input_proc_sample_rate);
+        EditText proc_num_time_frames_input = (EditText) findViewById(R.id.input_proc_num_time_frames);
+        EditText proc_resolution_input = (EditText) findViewById(R.id.input_proc_resolution);
+        EditText proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
+        EditText proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
+
+        // TODO: declaring the variables locally to reduce memory use
+        /* Classifier Setting Inputs */
+        EditText classifier_fft_size_input = (EditText) findViewById(R.id.input_classifier_fft_size);
+        EditText classifier_num_classes_input = (EditText) findViewById(R.id.input_classifier_num_classes);
+        EditText classifier_num_inter_comp_input = (EditText) findViewById(R.id.input_classifier_num_inter_comp);
+        EditText classifier_num_iters_input = (EditText) findViewById(R.id.input_classifier_num_iters);
+
+        /* Apply Setting Button */
+        Button apply_settings_button = (Button) findViewById(R.id.apply_select);
+
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
@@ -105,12 +107,6 @@ public class SettingsActivity extends AppCompatActivity {
             getUserSelectedFile(activity_launcher);
         });
 
-        /* Model Import Filename Update Logic */
-        modelFilenameUpdate(model_filename_view,  model_filename_marker_view, num_class_events_text,
-                clip_len_text, num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                num_training_sample_text
-        );
-
         /* Apply button logic */
         apply_settings_button.setOnClickListener(button -> {
             // Importing input user settings and checking if these settings are valid
@@ -131,7 +127,6 @@ public class SettingsActivity extends AppCompatActivity {
                     proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
                     classifier_num_inter_comp_input, classifier_num_iters_input
             );
-
             // Checking validity of settings
             if (!valid_flag) {
                 Snackbar.make(button, "Settings are not valid", Snackbar.LENGTH_LONG)
@@ -140,10 +135,29 @@ public class SettingsActivity extends AppCompatActivity {
             }
             Snackbar.make(button, "Saving Settings", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();
+            // Import model file
+            configureModel(model_filename_view, model_filename_marker_view);
 
-
+            // Setting system settings applied flag
+            Globals.sys_settings_flag = true;
         });
 
+        /* Model Import Filename Update Logic */
+        modelFilenameUpdate(model_filename_view,  model_filename_marker_view, num_class_events_text,
+                clip_len_text, num_overlaps_text, snr_range_min_text, snr_range_max_text,
+                num_training_sample_text
+        );
+
+        if (Globals.sys_settings_flag){
+            uiFieldUpdate(model_filename_view, num_class_events_text, clip_len_text,
+                    num_overlaps_text, snr_range_min_text, snr_range_max_text,
+                    num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
+                    cap_format_input, proc_fft_size_input, proc_sample_rate_input,
+                    proc_num_time_frames_input, proc_resolution_input, proc_window_time_input,
+                    proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
+                    classifier_num_inter_comp_input, classifier_num_iters_input
+            );
+        }
     }
 
 
@@ -524,28 +538,51 @@ public class SettingsActivity extends AppCompatActivity {
         classifier_num_iters_input.setText(String.format("%d", Globals.classifier_num_iters));
     }
 
-    // Importing model file
-    classifier_imported_nmf_model = null;
+
+    /* Model Import */
+    private void configureModel(TextView model_filename_view, ImageView model_filename_marker_view){
+        Globals.classifier_imported_nmf_model = null;
         if (isValidModelFilename(model_filename_view, model_filename_marker_view)) {
-        classifier_imported_nmf_model=importModelFile(model_filename_view.getText().toString());
-    }
-        if (classifier_imported_nmf_model == null) {
-        Log.e("Classifier", "The import failed somewhere, the returned object is null");
-        // TODO: Handle failures better, maybe inform user and revert to default values?
-        return;
-    }
+            Globals.classifier_imported_nmf_model = importModelFile(model_filename_view.getText().toString());
+        }
+        if (Globals.classifier_imported_nmf_model == null) {
+            Log.e("Classifier", "The import failed somewhere, the returned object is null");
+            // TODO: Handle failures better, maybe inform user and revert to default values?
+            return;
+        }
         Log.v("Classifier", String.format("Imported values:" +
-                "\n\tW1 (shape): (%d,%d)\n\tW2 (shape): (%d, %d)\n\tW1 example value: %f" +
-                "\n\tW2 example value: %f",
-    classifier_imported_nmf_model.W1.length, classifier_imported_nmf_model.W1[0].length,
-    classifier_imported_nmf_model.W2.length, classifier_imported_nmf_model.W2[0].length,
-    classifier_imported_nmf_model.W1[0][0], classifier_imported_nmf_model.W2[0][0]));
+                        "\n\tW1 (shape): (%d,%d)\n\tW2 (shape): (%d, %d)\n\tW1 example value: %f" +
+                        "\n\tW2 example value: %f",
+                Globals.classifier_imported_nmf_model.W1.length,
+                Globals.classifier_imported_nmf_model.W1[0].length,
+                Globals.classifier_imported_nmf_model.W2.length,
+                Globals.classifier_imported_nmf_model.W2[0].length,
+                Globals.classifier_imported_nmf_model.W1[0][0],
+                Globals.classifier_imported_nmf_model.W2[0][0]));
+    }
 
+    private NMF.NMF_Mini importModelFile(String filename) {
+        Log.v("ImportModelFile", "Attempting to import model file...");
+        Log.v("ImportModelFile", "File path: " + Globals.MODEL_DIR_LOC + filename +
+                Globals.MODEL_FILE_EXT);
+        NMF.NMF_Mini nmf_mini = null;
+        File file = new File(Globals.MODEL_DIR_LOC + filename + Globals.MODEL_FILE_EXT);
+        try{
+            // Final check for files existence
+            if (!file.exists()) {
+                Log.e("ImportModelFileERROR", "File does not exist");
+                return null;
+            }
+            // Reading in the JSON file
+            Reader reader = new FileReader(file);
+            // Loading the dictionaries
+            nmf_mini = new Gson().fromJson(reader, NMF.NMF_Mini.class);
+            Log.v("ImportModelFile", "Imported model from file");
+        } catch (Exception e) {
+            Log.e("ImportModelFileERROR", "Failed to import model from file");
+            e.printStackTrace();
+        }
+        return nmf_mini;
+    }
 
-//    public static class SettingsFragment extends PreferenceFragmentCompat {
-//        @Override
-//        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-//            setPreferencesFromResource(R.xml.root_preferences, rootKey);
-//        }
-//    }
 }

@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context=".ScrollingActivity">
+    tools:context=".SettingsActivity"
+    tools:showIn="@layout/settings_activity">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -592,6 +593,7 @@
             android:layout_height="wrap_content"
             android:text="@string/apply_select"
             android:textAlignment="center" />
+
 
         <!--        <TextView-->
 <!--            android:layout_width="wrap_content"-->

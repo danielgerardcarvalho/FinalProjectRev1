@@ -16,6 +16,15 @@ public class Globals {
             + "/Project/dictionaries/";
     // model import variables
     public static File model_import_file;
+    public static NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
+
+    /* Buffer Constants */
+    public static final int CAP_QUEUE_SIZE = 5;         // Capture output buffer
+    public static final int PROC_QUEUE_SIZE = 3;        // Processing output buffer
+    public static final int CLASSIFIER_QUEUE_SIZE = 1;  // Classifier output buffer
+
+    /* Processing Constants */
+    public static final int HANN = 0;         // HANN window constant
 
     /* Capture Settings Constants*/
     public static final int AUDIO_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
@@ -23,7 +32,6 @@ public class Globals {
     public static final int AUDIO_FORMAT_INT16 = AudioFormat.ENCODING_PCM_16BIT;
     public static final int AUDIO_FORMAT_FLOAT = AudioFormat.ENCODING_PCM_FLOAT;
     public static final int AUDIO_MIN_FORMAT_SIZE = 1;
-    public final int CAP_QUEUE_SIZE = 5;
     public static final int[] AUDIO_SOURCES = {MediaRecorder.AudioSource.MIC,
             MediaRecorder.AudioSource.UNPROCESSED};
     // input format options
@@ -31,26 +39,28 @@ public class Globals {
     public static final String UI_AUDIO_FORMAT_FLOAT = "float";
 
 
+    /* UI Associated General Variables */
+    public static boolean sys_settings_flag = false;
 
     /* UI Associated Model Import Settings */
     // Values
-    public static int model_num_class_events;
-    public static int model_clip_len;
-    public static int model_num_overlaps;
-    public static int model_snr_range_min;
-    public static int model_snr_range_max;
-    public static int model_num_training_samples;
-    public static int model_num_inter_comp;
+    public static int model_num_class_events;           // number of event classes in model
+    public static int model_clip_len;                   // length of clip in model
+    public static int model_num_overlaps;               // number of overlaps in model
+    public static int model_snr_range_min;              // snr range min in model
+    public static int model_snr_range_max;              // snr range max in model
+    public static int model_num_training_samples;       // number of training samples in model
+    public static int model_num_inter_comp;             // number of componenets in model
 
     /* UI Associated Capture Settings */
     // Values
-    public static int cap_sample_rate;
-    public static int cap_time_interval;
-    public static int cap_buffer_size;
-    public static boolean cap_file_import_flag = false;
-    public static File cap_imported_file;
+    public static int cap_sample_rate;                      // capture sample ratae
+    public static int cap_time_interval;                    // capture time interval
+    public static int cap_buffer_size;                      // capture buffer size
+    public static boolean cap_file_import_flag = false;     // indicates if capture is file mode
+    public static File cap_imported_file;                   // capture file
     public static FileInputStream cap_imported_file_stream;
-    public static int cap_format;
+    public static int cap_format;                           // the format of the capture
 
     /* UI Associated Processing Settings */
     // Values

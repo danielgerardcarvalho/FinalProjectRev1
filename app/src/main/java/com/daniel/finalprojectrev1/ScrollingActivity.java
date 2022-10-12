@@ -5,27 +5,19 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.AudioFormat;
 import android.media.AudioRecord;
-import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
-import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.TextView;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -34,25 +26,13 @@ import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
-import com.google.gson.Gson;
 
-//import org.ojalgo.matrix.store.MatrixStore;
-//import org.ojalgo.matrix.store.PhysicalStore;
-//import org.ojalgo.matrix.store.Primitive64Store;
-
-import org.ojalgo.matrix.store.Primitive64Store;
-
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-
-import jeigen.DenseMatrix;
 
 public class ScrollingActivity extends AppCompatActivity {
 
@@ -79,10 +59,8 @@ public class ScrollingActivity extends AppCompatActivity {
     private ArrayList<byte[]> cap_buffer;
     private boolean cap_first_run;
 
+
     /* Audio Pre-Processing */
-    // processing constants
-    private final int HANN = 0;
-    private final int PROC_QUEUE_SIZE = 3;
     // processing multi-threading
     private Thread mt_processing_thread;
     private Runnable mt_audio_processing_runnable;
@@ -91,13 +69,10 @@ public class ScrollingActivity extends AppCompatActivity {
     private ArrayList<double[][]> proc_buffer;
 
     /* Classifier */
-    // classifier constants
-    private final int CLASSIFIER_QUEUE_SIZE = 1;
     // classifier multi-thread
     private Thread mt_classifier_thread;
     private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
     private boolean mt_classifier_flag;                 // multi-thread status flag
-    private NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
     private double[][] classifier_data_prev;      // classifier input (previous) used for plotting
     private double[][] classifier_data;           // classifier input
     private ArrayList<double[][]> classifier_buffer;   // classifier output buffer
@@ -129,6 +104,10 @@ public class ScrollingActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         CollapsingToolbarLayout toolBarLayout = binding.toolbarLayout;
         toolBarLayout.setTitle(getTitle());
+
+        /* Basic User Settings */
+        EditText cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
+        EditText classifier_num_iters_input = (EditText) findViewById(R.id.input_classifier_num_iters);
 
         /* Configure Runnables */
         configureRunnables();
@@ -164,6 +143,9 @@ public class ScrollingActivity extends AppCompatActivity {
                 system_flag = false;
 
             } else {
+                // Update Settings
+                updateSettings(cap_time_interval_input, classifier_num_iters_input);
+
                 // UI displays
                 Snackbar.make(view, "Starting system", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
@@ -177,7 +159,7 @@ public class ScrollingActivity extends AppCompatActivity {
                 // Configure processing system
                 configureProcessing();
                 // Configure classifier system
-                configureClassifier(Globals.model_filename_view, Globals.model_filename_marker_view);
+                configureClassifier();
 
                 // Starting the sub-system threads
 //                startCapture();
@@ -193,6 +175,11 @@ public class ScrollingActivity extends AppCompatActivity {
                 system_flag = true;
             }
         });
+
+        /* UI Update */
+        if (Globals.sys_settings_flag) {
+            uiFieldUpdate(cap_time_interval_input, classifier_num_iters_input);
+        }
 
         /* Checking application permissions */
         checkAllPermissions();
@@ -279,6 +266,28 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
 
+    // Settings
+    private void uiFieldUpdate(EditText cap_time_interval_input, EditText classifier_num_iters_input){
+        cap_time_interval_input.setText(String.format("%d", Globals.cap_time_interval));
+        classifier_num_iters_input.setText(String.format("%d", Globals.classifier_num_iters));
+    }
+
+    private void updateSettings(EditText cap_time_interval_input, EditText classifier_num_iters_input){
+        // Capture time interval
+        if (!TextUtils.isEmpty(cap_time_interval_input.getText())) {
+            Globals.cap_time_interval = Integer.parseInt(cap_time_interval_input.getText().toString());
+        } else {
+            Globals.cap_time_interval = Globals.model_clip_len;
+        }
+        // Classifier number of internal iterations
+        if (!TextUtils.isEmpty(classifier_num_iters_input.getText())) {
+            Globals.classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getText().toString());
+        } else {
+            Globals.classifier_num_iters = Integer.parseInt(classifier_num_iters_input.getHint().toString());
+        }
+    }
+
+
     // Permissions
     private void checkAllPermissions(){
         // Checking for required permissions
@@ -320,31 +329,6 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
 
-    // Import
-    private NMF.NMF_Mini importModelFile(String filename) {
-        Log.v("ImportModelFile", "Attempting to import model file...");
-        Log.v("ImportModelFile", "File path: " + MODEL_DIR_LOC + filename + MODEL_FILE_EXT);
-        NMF.NMF_Mini nmf_mini = null;
-        File file = new File(MODEL_DIR_LOC + filename + MODEL_FILE_EXT);
-        try{
-            // Final check for files existence
-            if (!file.exists()) {
-                Log.e("ImportModelFileERROR", "File does not exist");
-                return null;
-            }
-            // Reading in the JSON file
-            Reader reader = new FileReader(file);
-            // Loading the dictionaries
-            nmf_mini = new Gson().fromJson(reader, NMF.NMF_Mini.class);
-            Log.v("ImportModelFile", "Imported model from file");
-        } catch (Exception e) {
-            Log.e("ImportModelFileERROR", "Failed to import model from file");
-            e.printStackTrace();
-        }
-        return nmf_mini;
-    }
-
-
     // Capture
     private void configureCapture() {
         /* Configures capture variables before the start of any sub-systems*/
@@ -352,36 +336,36 @@ public class ScrollingActivity extends AppCompatActivity {
         // Reset first run flag
         cap_first_run = true;
         // Minimum buffer size
-        int min_buffer_size = AudioRecord.getMinBufferSize(cap_sample_rate, AUDIO_CHANNELS,
-                cap_format);
+        int min_buffer_size = AudioRecord.getMinBufferSize(Globals.cap_sample_rate, Globals.AUDIO_CHANNELS,
+                Globals.cap_format);
         // Calculating buffer size
         int multiplier = 2;
-        if (cap_format == AUDIO_FORMAT_INT8){
+        if (Globals.cap_format == Globals.AUDIO_FORMAT_INT8){
             multiplier = 1;
-        } else if (cap_format == AUDIO_FORMAT_INT16){
+        } else if (Globals.cap_format == Globals.AUDIO_FORMAT_INT16){
             multiplier = 2;
-        } else if (cap_format == AUDIO_FORMAT_FLOAT) {
+        } else if (Globals.cap_format == Globals.AUDIO_FORMAT_FLOAT) {
             multiplier = 4;
         }
-        cap_buffer_size = (int) cap_sample_rate * cap_time_interval * (multiplier/*cap_format /
+        Globals.cap_buffer_size = (int) Globals.cap_sample_rate * Globals.cap_time_interval * (multiplier/*cap_format /
                 AUDIO_MIN_FORMAT_SIZE*/);
 
         // Checking if cap_buffer_size is large enough
-        if (cap_buffer_size < min_buffer_size){
+        if (Globals.cap_buffer_size < min_buffer_size){
             Log.e("AudioCapture", String.format("cap_buffer_size: is too small\n\tcurrent:%d" +
-                    "\n\trequired:%d", cap_buffer_size, min_buffer_size));
-            cap_buffer_size = min_buffer_size;
+                    "\n\trequired:%d", Globals.cap_buffer_size, min_buffer_size));
+            Globals.cap_buffer_size = min_buffer_size;
         }
         // Creating audio record object
         checkPermission(this, this, Manifest.permission.RECORD_AUDIO);
-        audio_recorder = new AudioRecord(AUDIO_SOURCES[1], cap_sample_rate, AUDIO_CHANNELS,
-                cap_format, cap_buffer_size);
+        audio_recorder = new AudioRecord(Globals.AUDIO_SOURCES[1], Globals.cap_sample_rate, Globals.AUDIO_CHANNELS,
+                Globals.cap_format, Globals.cap_buffer_size);
         // Buffer clearing / initialisation
         cap_buffer = new ArrayList<>();
-        if (cap_file_import_flag){
+        if (Globals.cap_file_import_flag){
             // Convert the File to input stream
             try {
-                cap_imported_file_stream = new FileInputStream(cap_imported_file);
+                Globals.cap_imported_file_stream = new FileInputStream(Globals.cap_imported_file);
 
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -396,7 +380,7 @@ public class ScrollingActivity extends AppCompatActivity {
         mt_audio_capture_flag = true;
 
         // Check if file is imported
-        if (cap_file_import_flag){
+        if (Globals.cap_file_import_flag){
             Log.d("Capture", "File mode is active");
             new Thread(mt_file_capture_runnable).start();
             return;
@@ -422,13 +406,13 @@ public class ScrollingActivity extends AppCompatActivity {
         mt_audio_capture_flag = false;
 
         // Clearing file capture data
-        cap_imported_file = null;
-        cap_imported_file_stream = null;
+        Globals.cap_imported_file = null;
+        Globals.cap_imported_file_stream = null;
         // Check if file import was used
-        if (cap_file_import_flag){
+        if (Globals.cap_file_import_flag){
             // Stopping file reading interface
             // Reset flags and clear files
-            cap_file_import_flag = false;
+            Globals.cap_file_import_flag = false;
             return;
         }
 
@@ -457,17 +441,17 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private void readAudioCaptureBuffer(){
         // Clear the input buffer with one byte read
-        byte [] temp = new byte[cap_buffer_size];
+        byte [] temp = new byte[Globals.cap_buffer_size];
         if (cap_buffer.size() == 0 && cap_first_run){
             // This read is only to clear garbage data and is only run of first iteration
             audio_recorder.read(temp, 0, 1);
             cap_first_run = false;
         }
         // Override garbage read with real read of AudioRecord buffer
-        int num_read = audio_recorder.read(temp, 0, cap_buffer_size);
+        int num_read = audio_recorder.read(temp, 0, Globals.cap_buffer_size);
 
         // Add read data to capture buffer
-        while (cap_buffer.size() == CAP_QUEUE_SIZE){
+        while (cap_buffer.size() == Globals.CAP_QUEUE_SIZE){
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -485,10 +469,10 @@ public class ScrollingActivity extends AppCompatActivity {
         cap_first_run = false;
         // Read data from the file input stream
         int num_read = 0;
-        byte[] temp = new byte[cap_buffer_size];
+        byte[] temp = new byte[Globals.cap_buffer_size];
         try {
-            num_read = cap_imported_file_stream.read(temp, 0,
-                    cap_buffer_size);
+            num_read = Globals.cap_imported_file_stream.read(temp, 0,
+                    Globals.cap_buffer_size);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -496,7 +480,7 @@ public class ScrollingActivity extends AppCompatActivity {
             Log.v("FileCapture", "Read entire file, ending read loop.");
             stopCapture();
         }
-        while (cap_buffer.size() == CAP_QUEUE_SIZE){
+        while (cap_buffer.size() == Globals.CAP_QUEUE_SIZE){
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -535,16 +519,16 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private void preProcessing(){
         // Finding window size
-        int window_size = (int) Math.ceil(proc_window_time * proc_sample_rate);
+        int window_size = (int) Math.ceil(Globals.proc_window_time * Globals.proc_sample_rate);
         //  Finding hop size
-        int hop_size = (int) Math.ceil(proc_hop_time * proc_sample_rate);
+        int hop_size = (int) Math.ceil(Globals.proc_hop_time * Globals.proc_sample_rate);
         //  Finding number of windows
-        int num_windows = (int) Math.floor((cap_time_interval * proc_sample_rate * 1.0 -
+        int num_windows = (int) Math.floor((Globals.cap_time_interval * Globals.proc_sample_rate * 1.0 -
                 window_size) / hop_size)+1;
         //  Finding window coefficients for HANN window
-        double [] window_coeff = window_func(window_size, HANN);
+        double [] window_coeff = window_func(window_size, Globals.HANN);
         // Pre-calculating the fft twiddle factor values
-        FFT fft = new FFT(proc_fft_size);
+        FFT fft = new FFT(Globals.proc_fft_size);
 
         // TODO: (MEL) decide fate of mel-spectrogram things, current implementation is wrong, not
         //  sure if mel-spectrum is needed at all. (removed in mean-time) - WILL NEED CONVERSION ojalgo
@@ -568,12 +552,12 @@ public class ScrollingActivity extends AppCompatActivity {
             // Fetch data from the capture buffer queue
             byte[] temp = cap_buffer.remove(0);
             // Converting from bytes to respective capture format
-            if (cap_format == AUDIO_FORMAT_INT16) {
-                proc_data = bytesToShort(temp, cap_format);
-            } else if (cap_format == AUDIO_FORMAT_FLOAT) {
-                proc_data = bytesToFloatShort(temp, cap_format);
+            if (Globals.cap_format == Globals.AUDIO_FORMAT_INT16) {
+                proc_data = bytesToShort(temp, Globals.cap_format);
+            } else if (Globals.cap_format == Globals.AUDIO_FORMAT_FLOAT) {
+                proc_data = bytesToFloatShort(temp, Globals.cap_format);
             } else {
-                proc_data = bytesToShort(temp, cap_format);
+                proc_data = bytesToShort(temp, Globals.cap_format);
             }
             // Converting from bytes to short
 //            proc_data = bytesToShort(temp, cap_format);
@@ -583,7 +567,7 @@ public class ScrollingActivity extends AppCompatActivity {
                     "\n\tInput buffer size: %d" +
                     "\n\tByte converted input buffer size: %d" +
                     "\n\tinput buffer max:%d, min:%f" +
-                    "\n\tnorm buffer max:%f, min:%f", cap_buffer_size, proc_data.length,
+                    "\n\tnorm buffer max:%f, min:%f", Globals.cap_buffer_size, proc_data.length,
                     max(proc_data), min(mul(proc_data, 1.0)), max(norm_proc_data), min(norm_proc_data)));
 
             // Perform STFT
@@ -591,7 +575,7 @@ public class ScrollingActivity extends AppCompatActivity {
             double[][] stft = stft(norm_proc_data, window_size, hop_size, num_windows,
                     window_coeff, fft/*, frequency_range, melscale_range*/);
             // Check if processing buffer is full
-            while (proc_buffer.size() == PROC_QUEUE_SIZE){
+            while (proc_buffer.size() == Globals.PROC_QUEUE_SIZE){
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -609,7 +593,7 @@ public class ScrollingActivity extends AppCompatActivity {
         double [] ret = new double[window_size];
 
         // Implementation of the HANN window
-        if (window_type == HANN){
+        if (window_type == Globals.HANN){
             for(int i = 0; i < window_size; i++){
                 ret[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / window_size));
             }
@@ -626,9 +610,7 @@ public class ScrollingActivity extends AppCompatActivity {
         double [] spec_window_real;
         double [] spec_window_imag;
         double[][] spectrogram;
-        double [][] temp_spectrogram = new double[num_windows][proc_fft_size/2];
-        // TODO: (MEL) removed in mean-time
-//        DenseMatrix mel_window = new DenseMatrix(1, 1);
+        double [][] temp_spectrogram = new double[num_windows][Globals.proc_fft_size/2];
 
         for (int i = 0; i < num_windows; i++) {
             // Extracting window from data
@@ -636,16 +618,16 @@ public class ScrollingActivity extends AppCompatActivity {
             // Calculating the FFT of the window
             fft.fft(window);
             // Use only half of the FFT output
-            spec_window_real = getValuesInRange(fft.getFFTReal(), 0, proc_fft_size/2);
-            spec_window_imag = getValuesInRange(fft.getFFTImag(), 0, proc_fft_size/2);
+            spec_window_real = getValuesInRange(fft.getFFTReal(), 0, Globals.proc_fft_size/2);
+            spec_window_imag = getValuesInRange(fft.getFFTImag(), 0, Globals.proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
-            double temp_scaler = proc_fft_size/2;
+            double temp_scaler = Globals.proc_fft_size/2;
             // TODO: Try and remove
             double [] temp_real_spec_window = abs(divide(spec_window_real, temp_scaler), divide(spec_window_imag, temp_scaler));
 //            double [] temp_real_spec_window = abs(spec_window_real, spec_window_imag);
 //            temp_real_spec_window = divide(temp_real_spec_window, temp_scaler);
             // Adding the window to the spectrogram
-            for (int j = 0; j < proc_fft_size/2; j++) {
+            for (int j = 0; j < Globals.proc_fft_size/2; j++) {
                 temp_spectrogram[i][j] = temp_real_spec_window[j];
             }
             // TODO: (MEL) removed in mean-time - NEEDS CONVERSION IF IMPLEMENTED AGAIN ojalgo
@@ -680,8 +662,8 @@ public class ScrollingActivity extends AppCompatActivity {
                         "\n\tnum windows (calculated):\t%d" +
                         "\nValues of STFT" +
                         "\n\tmax value:\t\t%f" +
-                        "\n\tmin value:\t\t%f", proc_fft_size, proc_num_time_frames,
-                spectrogram.length, spectrogram[0].length, proc_fft_size/2, num_windows,
+                        "\n\tmin value:\t\t%f", Globals.proc_fft_size, Globals.proc_num_time_frames,
+                spectrogram.length, spectrogram[0].length, Globals.proc_fft_size/2, num_windows,
                 max(spectrogram), min(spectrogram)));
 
         return spectrogram;
@@ -717,59 +699,58 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // TODO: currently this mel conversion method is not used (Deprecated as mel scale is not used), NEEDS CONVERSION IF USED AGAIN, ojalgo
     // Converts frequency spectrum to melscale
-    private double[] specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
-        int freq_count = 0;
-        int mel_count = 0;
-
-        int mel_temp_avg_iter = 0;
-        // TODO: Change these to array lists to improve space use and remove size quess work
-        double mel_temp_avg_array = 0.0;
-//        DenseMatrix mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
-
-//        int mel_scale_spectrum_iter = 0;
-        // TODO: change this to arraylist as well
-        ArrayList<Double> mel_scale_spectrum = new ArrayList<>();
-//        DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
-
-        while (freq_count < (int) (proc_fft_size/2)) {
-            // Checking if in range
-            if (freq_range.getValues()[freq_count] <= mel_range.getValues()[mel_count]) {
-                mel_temp_avg_array = mel_temp_avg_array + array.getValues()[freq_count];
-//                mel_temp_avg_array.set(mel_temp_avg_iter, array.getValues()[freq_count]);
-                mel_temp_avg_iter++;
-                freq_count++;
-            } else {
-                if (mel_temp_avg_iter == 0) {
-                    mel_scale_spectrum.add(array.getValues()[freq_count]);
-//                    mel_scale_spectrum.set(mel_scale_spectrum_iter, array.getValues()[freq_count]);
-                } else if (mel_temp_avg_iter == 1) {
-                    mel_scale_spectrum.add(mel_temp_avg_array);
-//                    mel_scale_spectrum.set(mel_scale_spectrum_iter,
-//                            mel_temp_avg_array.getValues()[0]);
-                    mel_temp_avg_array = 0.0;
-                } else {
-                    mel_scale_spectrum.add(mel_temp_avg_array/(mel_temp_avg_iter*1.0));
-//                    mel_scale_spectrum.set(mel_scale_spectrum_iter, getMean(mel_temp_avg_array,
-//                            mel_temp_avg_iter));
-                    mel_temp_avg_array = 0.0;
-
-                }
-                mel_count++;
-                mel_temp_avg_iter = 0;
-//                mel_scale_spectrum_iter++;
-            }
-        }
-        double[] ret = new double[mel_scale_spectrum.size()];
-        for (int i = 0; i < mel_scale_spectrum.size(); i++){
-            ret[i] = mel_scale_spectrum.get(i);
-        }
-        return ret;
-    }
-
+//    private double[] specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
+//        int freq_count = 0;
+//        int mel_count = 0;
+//
+//        int mel_temp_avg_iter = 0;
+//        // TODO: Change these to array lists to improve space use and remove size quess work
+//        double mel_temp_avg_array = 0.0;
+////        DenseMatrix mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
+//
+////        int mel_scale_spectrum_iter = 0;
+//        // TODO: change this to arraylist as well
+//        ArrayList<Double> mel_scale_spectrum = new ArrayList<>();
+////        DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
+//
+//        while (freq_count < (int) (Globals.proc_fft_size/2)) {
+//            // Checking if in range
+//            if (freq_range.getValues()[freq_count] <= mel_range.getValues()[mel_count]) {
+//                mel_temp_avg_array = mel_temp_avg_array + array.getValues()[freq_count];
+////                mel_temp_avg_array.set(mel_temp_avg_iter, array.getValues()[freq_count]);
+//                mel_temp_avg_iter++;
+//                freq_count++;
+//            } else {
+//                if (mel_temp_avg_iter == 0) {
+//                    mel_scale_spectrum.add(array.getValues()[freq_count]);
+////                    mel_scale_spectrum.set(mel_scale_spectrum_iter, array.getValues()[freq_count]);
+//                } else if (mel_temp_avg_iter == 1) {
+//                    mel_scale_spectrum.add(mel_temp_avg_array);
+////                    mel_scale_spectrum.set(mel_scale_spectrum_iter,
+////                            mel_temp_avg_array.getValues()[0]);
+//                    mel_temp_avg_array = 0.0;
+//                } else {
+//                    mel_scale_spectrum.add(mel_temp_avg_array/(mel_temp_avg_iter*1.0));
+////                    mel_scale_spectrum.set(mel_scale_spectrum_iter, getMean(mel_temp_avg_array,
+////                            mel_temp_avg_iter));
+//                    mel_temp_avg_array = 0.0;
+//
+//                }
+//                mel_count++;
+//                mel_temp_avg_iter = 0;
+////                mel_scale_spectrum_iter++;
+//            }
+//        }
+//        double[] ret = new double[mel_scale_spectrum.size()];
+//        for (int i = 0; i < mel_scale_spectrum.size(); i++){
+//            ret[i] = mel_scale_spectrum.get(i);
+//        }
+//        return ret;
+//    }
+//
 
     // Classifier
-    private void configureClassifier(TextView model_filename_view,
-                                     ImageView model_filename_marker_view) {
+    private void configureClassifier() {
         /* Configures classifier variables before the start of any sub-systems*/
         // Input variable clearing / initialisation
         classifier_data = null;
@@ -789,30 +770,29 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private void stopClassifier() {
         // Stopping classifier thread
-        classifier_imported_nmf_model = null;
         mt_classifier_flag = false;
         mt_classifier_thread.interrupt();
     }
 
     private void classifier() {
         // Calculating number of time frames
-        int num_windows = (int) (Math.floor((cap_time_interval * (proc_sample_rate * 1.0) -
-                (int) Math.ceil(proc_window_time * proc_sample_rate)) /
-                (int) Math.ceil(proc_hop_time * proc_sample_rate))+1);
+        int num_windows = (int) (Math.floor((Globals.cap_time_interval * (Globals.proc_sample_rate * 1.0) -
+                (int) Math.ceil(Globals.proc_window_time * Globals.proc_sample_rate)) /
+                (int) Math.ceil(Globals.proc_hop_time * Globals.proc_sample_rate))+1);
         // Initialising the NMF class
         NMF nmf = new NMF(
-                classifier_fft_size,
+                Globals.classifier_fft_size,
                 num_windows,
-                classifier_num_classes,
-                classifier_num_inter_comp,
-                classifier_num_iters
+                Globals.classifier_num_classes,
+                Globals.classifier_num_inter_comp,
+                Globals.classifier_num_iters
         );
         nmf.setProgressUpdateVars(this, progress_indicator_view);
         // Loading Dictionaries
         Log.v("Classifier", "Loading imported model dictionaries...");
-        nmf.loadW1(classifier_imported_nmf_model.W1);
-        nmf.loadW2(classifier_imported_nmf_model.W2);
-        nmf.loadTrainingError(classifier_imported_nmf_model.training_cost);
+        nmf.loadW1(Globals.classifier_imported_nmf_model.W1);
+        nmf.loadW2(Globals.classifier_imported_nmf_model.W2);
+        nmf.loadTrainingError(Globals.classifier_imported_nmf_model.training_cost);
 
         while(mt_classifier_flag) {
 //            Log.v("Classifier", "Classifier thread is active...");
@@ -916,7 +896,7 @@ public class ScrollingActivity extends AppCompatActivity {
             }
 
             // Check if processing buffer is full
-            while (classifier_buffer.size() == CLASSIFIER_QUEUE_SIZE){
+            while (classifier_buffer.size() == Globals.CLASSIFIER_QUEUE_SIZE){
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -940,7 +920,6 @@ public class ScrollingActivity extends AppCompatActivity {
         int num_time_frames = 500;
         // Creating the matrix
         double[][] spec_matrix = createMatrix(num_freq_bins, num_time_frames, 0.0);
-//        DenseMatrix spec_matrix = DenseMatrix.zeros(num_freq_bins, num_time_frames);
         spec_matrix[100][50] = 0.5;
         spec_matrix[100][51] = 1;
 
@@ -1004,14 +983,7 @@ public class ScrollingActivity extends AppCompatActivity {
         // Extract spectrogram from the classifier_buffer queue
         while (classifier_buffer == null || classifier_buffer.size() == 0) {}
         double[][] temp = classifier_buffer.remove(0);
-//        DenseMatrix invert_temp = new DenseMatrix(temp.rows, temp.cols);
-//        for (int i = temp.rows-1; i >= 0; i--){
-//            for (int j = 0; j < temp.cols; j++) {
-//                invert_temp.set(i,j, temp.get(temp.rows-(i+1),j));
-//            }
-//        }
-//        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.rows, invert_temp.cols, invert_temp.getValues()[0]));
-//        SpectrogramView sp_view_obj = new SpectrogramView(this, invert_temp.div(invert_temp.maxOverCols().maxOverRows().getValues()[0]), image.getWidth());
+
         BitMapView sp_view_obj = new BitMapView(this, temp, image.getWidth());
         image.setImageBitmap(sp_view_obj.bmp);
     }
@@ -1155,11 +1127,11 @@ public class ScrollingActivity extends AppCompatActivity {
     // Convert from byte array to short []
     private short[] bytesToShort(byte[] array, int format) {
         short [] ret;
-        if (format == AUDIO_FORMAT_INT8){
+        if (format == Globals.AUDIO_FORMAT_INT8){
             ret = new short[(int)(array.length)];
-        } else if (format == AUDIO_FORMAT_INT16) {
+        } else if (format == Globals.AUDIO_FORMAT_INT16) {
             ret = new short[(int) (array.length / 2)];
-        } else if (format == AUDIO_FORMAT_FLOAT) {
+        } else if (format == Globals.AUDIO_FORMAT_FLOAT) {
             ret = new short[(int) (array.length / 4)];
         } else {
             ret = new short[(int)(array.length/2)];
