@@ -163,7 +163,12 @@ public class NMF {
                 Log.v("ClassifierNMF", String.format("Iteration: %d / %d, error: %f",
                         curr_iter_num, this.iter_limit, this.error.get(this.error.size()-1)));
                 // Check for interrupt exception
-                Thread.sleep(1);
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e){
+//                    this.clear();
+                    throw new InterruptedException();
+                }
             }
             curr_iter_num++;
         }

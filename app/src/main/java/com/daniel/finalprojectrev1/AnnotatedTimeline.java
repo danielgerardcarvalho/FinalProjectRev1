@@ -7,12 +7,16 @@ import android.view.View;
 import androidx.core.content.ContextCompat;
 
 import com.github.mikephil.charting.charts.ScatterChart;
+import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.ScatterData;
 import com.github.mikephil.charting.data.ScatterDataSet;
+import com.github.mikephil.charting.formatter.IAxisValueFormatter;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 
@@ -21,12 +25,55 @@ import org.ojalgo.matrix.store.Primitive64Store;
 import java.util.ArrayList;
 
 public class AnnotatedTimeline {
+    private int num_data_points;
+    private double label_value_max;
+    private double label_value_min;
+    private int num_labels;
+
     private ScatterChart plot;
     private String [] event_classes;
+
+    public class tempFormatter extends ValueFormatter {
+        ArrayList<String> label_array;
+        public tempFormatter(ArrayList<String> label_array){
+            this.label_array = label_array;
+        }
+
+        @Override
+        public String getAxisLabel(float value, AxisBase axis){
+            Integer position = Math.round(value);
+            if (value > 1 && value < 2) {
+                position = 0;
+            } else if (value > 2 && value < 3) {
+                position = 1;
+            } else if (value > 3 && value < 4) {
+                position = 2;
+            } else if (value > 4 && value <= 5) {
+                position = 3;
+            }
+            if (position < label_array.size())
+                return label_array.get(position);
+            return "";
+        }
+    }
 
     public AnnotatedTimeline(ScatterChart plot) {
         this.plot = plot;
         this.event_classes = new String[]{"Dog", "Breaking glass", "Siren", "Gunshot", "Explosion"};
+
+        // Setting number of time frame data points
+        this.num_data_points = (int) (Math.floor((Globals.cap_time_interval *
+                (Globals.proc_sample_rate * 1.0) - (int) Math.ceil(Globals.proc_window_time *
+                Globals.proc_sample_rate)) / (int) Math.ceil(Globals.proc_hop_time *
+                Globals.proc_sample_rate))+1);
+
+        // Setting maximum x-axis label value
+        this.label_value_max = (double) Globals.cap_time_interval;
+        // Setting minimum x-axis label value
+        this.label_value_min = 0.0;
+        // Setting number of discrete visible labels
+        this.num_labels = 15;
+
         constructPlot();
     }
 
@@ -35,21 +82,71 @@ public class AnnotatedTimeline {
         // Setting the visibility of the plot
         plot.setVisibility(View.VISIBLE);
         // Configure Axes
-        // y-axis
+
+        /* Y - Axis */
         YAxis yl = plot.getAxisLeft();
         plot.getAxisRight().setEnabled(false);
         plot.getAxisLeft().setEnabled(false);
         yl.setAxisMinimum(0f);
-        // x-axis
-        XAxis xl = plot.getXAxis();
-        xl.setDrawGridLines(false);
-        xl.setEnabled(false);
+
+//        /* X - Axis */
+//        double num_data_points_per_discrete_label = (double)num_data_points/(double)num_labels;
+//        // Creating label values
+//        ArrayList<String> label_array = new ArrayList<>();
+//        double current_label_value = label_value_min;
+//        int label_value_array_count = 0;
+//        for (int i = 0; i < num_data_points; i++){
+//            if (i >= num_data_points_per_discrete_label * label_value_array_count){
+//                if (num_labels > 1+label_value_array_count){
+//                    current_label_value = ((double)label_value_max/(double)num_data_points) * i + label_value_min; //label_value_array.get(label_value_array_count++);
+//                } else {
+//                    current_label_value = label_value_max;
+//                }
+//            }
+//            label_array.add(String.format("%.1f", current_label_value));
+//        }
+//        label_array.set(label_array.size()-1, String.format("%.1f", label_value_max));
+//        // Configuring the x-axis
+//        // get x-axis object
+//        XAxis xl = plot.getXAxis();
+//        // set position of x-axis
+//        xl.setPosition(XAxis.XAxisPosition.BOTTOM);
+//        // enable x-axis
+//        xl.setEnabled(true);
+//        // set x-axis label values
+//        xl.setValueFormatter(new IndexAxisValueFormatter(label_array));
+//        // set the number of viewable labels
+//        xl.setLabelCount(num_labels);
+//        // Prevent last index from being clipped
+//        xl.setAvoidFirstLastClipping(true);
+////        xl.setGranularity(1.f);
+////        xl.setAxisMaximum((float) num_data_points);
+////        xl.setAxisMaximum((float) 0);
+////        plot.setVisibleXRange(1f, 1f);
+//        xl.setAxisMaximum(num_data_points);
+//        xl.setAxisMinimum(0);
+//        xl.setDrawGridLines(true);
+
+        XAxis x_axis = plot.getXAxis();
+        x_axis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        x_axis.setEnabled(true);
+        x_axis.setLabelCount(num_labels);
+        x_axis.setAxisMaximum((float) label_value_max);
+        x_axis.setAxisMinimum((float) label_value_min);
+        x_axis.setDrawGridLines(true);
+        x_axis.setDrawAxisLine(true);
+        ArrayList<String> x_labels = new ArrayList<>();
+        for (int i = 0; i < num_data_points; i++){
+            x_labels.add(i + "s");
+        }
+        x_axis.setValueFormatter(new IndexAxisValueFormatter(x_labels));
 
         // Disable content descriptions
         plot.getDescription().setEnabled(false);
         plot.setDrawGridBackground(false);
         plot.setTouchEnabled(false);
         plot.setMaxVisibleValueCount((int)(1000000));
+
 
 //        // below line is use to disable the description
 //        // of our scatter plot.
@@ -110,7 +207,8 @@ public class AnnotatedTimeline {
             for (int j = 0; j < data[i].length; j++) {
                 // Converting data to appropriate form
                 if (data[i][j] != 0) {
-                    Entry temp = new Entry((int) (data[i][j] * j), (float) (i + 0.5));
+//                    Entry temp = new Entry((int) (data[i][j] * j), (float) (i + 0.5));
+                    Entry temp = new Entry((float) (data[i][j] * 15/data[i].length * j), (float) (i + 0.5));
                     temp.setIcon(icon_array.get(i));
                     temp_entry.add(temp);
 //                    temp_entry.add(new Entry((int) (data.get(i, j) * j),  (float) (i + 0.5)));

@@ -19,8 +19,8 @@ public class Globals {
     public static NMF.NMF_Mini classifier_imported_nmf_model; // nmf mini class object
 
     /* Buffer Constants */
-    public static final int CAP_QUEUE_SIZE = 5;         // Capture output buffer
-    public static final int PROC_QUEUE_SIZE = 3;        // Processing output buffer
+    public static final int CAP_QUEUE_SIZE = 2;         // Capture output buffer
+    public static final int PROC_QUEUE_SIZE = 1;        // Processing output buffer
     public static final int CLASSIFIER_QUEUE_SIZE = 1;  // Classifier output buffer
 
     /* Processing Constants */

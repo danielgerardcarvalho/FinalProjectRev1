@@ -332,7 +332,7 @@ public class ScrollingActivity extends AppCompatActivity {
     // Capture
     private void configureCapture() {
         /* Configures capture variables before the start of any sub-systems*/
-
+        Log.v("Capture", "Starting configCapture");
         // Reset first run flag
         cap_first_run = true;
         // Minimum buffer size
@@ -375,13 +375,13 @@ public class ScrollingActivity extends AppCompatActivity {
 
     private void startCapture(){
         /* Finalises configuration and starts sub-system */
-
+        Log.v("Capture", "Starting startCapture");
         // Set activity flag to true - as the system is starting
         mt_audio_capture_flag = true;
 
         // Check if file is imported
         if (Globals.cap_file_import_flag){
-            Log.d("Capture", "File mode is active");
+            Log.v("Capture", "File mode is active");
             new Thread(mt_file_capture_runnable).start();
             return;
         }
@@ -392,7 +392,7 @@ public class ScrollingActivity extends AppCompatActivity {
                     "initialised");
             return;
         }
-        Log.d("Capture", "Audio mode is active");
+        Log.v("Capture", "Audio mode is active");
         // Starting recording interface
         audio_recorder.startRecording();
         // Starting recording read thread
@@ -401,7 +401,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void stopCapture(){
-
+        Log.v("Capture", "Starting stopCapture");
         // Stopping recording read thread
         mt_audio_capture_flag = false;
 
@@ -496,6 +496,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Processing
     private void configureProcessing() {
+        Log.v("Processing", "Starting configProcessing");
         /* Configures processing variables before the start of any sub-systems*/
         // Input variable initialisation
         proc_data = null;
@@ -504,6 +505,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void startProcessing(){
+        Log.v("Processing", "Starting startProcessing");
         /* Finalises configuration and starts sub-system */
 
         // Set the activity flag to true as sub-system is starting
@@ -513,6 +515,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void stopProcessing(){
+        Log.v("Processing", "Starting stopProcessing");
         // Stopping pre-processing thread
         mt_audio_processing_flag = false;
     }
@@ -751,6 +754,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     // Classifier
     private void configureClassifier() {
+        Log.v("Classifier", "Starting configClassifier");
         /* Configures classifier variables before the start of any sub-systems*/
         // Input variable clearing / initialisation
         classifier_data = null;
@@ -760,6 +764,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void startClassifier() {
+        Log.v("Classifier", "Starting startClassifier");
         /* Finalises configuration and starts sub-system */
         // Set the activity flag to true as sub-system is starting
         mt_classifier_flag = true;
@@ -769,6 +774,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void stopClassifier() {
+        Log.v("Classifier", "Starting stopClassifier");
         // Stopping classifier thread
         mt_classifier_flag = false;
         mt_classifier_thread.interrupt();
@@ -993,6 +999,7 @@ public class ScrollingActivity extends AppCompatActivity {
 
     /* Plotting */
     private void configurePlotting() {
+        Log.v("Plotting", "Starting configPlotting");
         // Configure the plotting sub-system
         plotting_image_views = new ArrayList<>();
         plotting_text_views = new ArrayList<>();
@@ -1026,6 +1033,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     private void stopPlotting(){
+        Log.v("Plotting", "Starting stopPlotting");
         mt_plotting_flag = false;
         capture_plotting_flag = false;
         processing_plotting_flag = false;
