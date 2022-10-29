@@ -143,9 +143,9 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         /* Model Import Filename Update Logic */
-        modelFilenameUpdate(model_filename_view,  model_filename_marker_view, num_class_events_text,
-                clip_len_text, num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                num_training_sample_text
+        modelFilenameUpdate(model_filename_view,  model_filename_marker_view, proc_fft_size_input,
+                num_class_events_text, clip_len_text, num_overlaps_text, snr_range_min_text,
+                snr_range_max_text, num_training_sample_text
         );
 
         if (Globals.sys_settings_flag){
@@ -182,18 +182,24 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void modelFilenameUpdate(TextView model_filename_view, ImageView model_filename_marker_view,
-                                     EditText num_class_events_text, EditText clip_len_text,
-                                     EditText num_overlaps_text, EditText snr_range_min_text,
-                                     EditText snr_range_max_text, EditText num_training_sample_text){
+                                     EditText proc_fft_size_input, EditText num_class_events_text,
+                                     EditText clip_len_text, EditText num_overlaps_text,
+                                     EditText snr_range_min_text, EditText snr_range_max_text,
+                                     EditText num_training_sample_text){
 
         // Updating model filename
-        num_class_events_text.addTextChangedListener(new TextWatcher() {
+        proc_fft_size_input.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(
+                        // ORIGINAL IMPLEMENTATION
+                        // String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        // FFT SIZE REPORTING IMPLEMENTATION
+                        String.format("FS%sdictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                                proc_fft_size_input.getText().toString(),
+                        // -----
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -201,6 +207,33 @@ public class SettingsActivity extends AppCompatActivity {
                         snr_range_max_text.getText().toString(),
                         num_training_sample_text.getText().toString()
                 ));
+
+                isValidModelFilename(model_filename_view, model_filename_marker_view);
+            }
+            @Override
+            public void afterTextChanged(Editable editable) {}
+        });
+        num_class_events_text.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                model_filename_view.setText(
+                        // ORIGINAL IMPLEMENTATION
+                        // String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        // FFT SIZE REPORTING IMPLEMENTATION
+                        String.format("FS%sdictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        proc_fft_size_input.getText().toString(),
+                        // -----
+                        num_class_events_text.getText().toString(),
+                        clip_len_text.getText().toString(),
+                        num_overlaps_text.getText().toString(),
+                        snr_range_min_text.getText().toString(),
+                        snr_range_max_text.getText().toString(),
+                        num_training_sample_text.getText().toString()
+                ));
+
                 isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
             @Override
@@ -213,7 +246,13 @@ public class SettingsActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(
+                        // ORIGINAL IMPLEMENTATION
+                        // String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        // FFT SIZE REPORTING IMPLEMENTATION
+                        String.format("FS%sdictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        proc_fft_size_input.getText().toString(),
+                        // -----
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -233,7 +272,13 @@ public class SettingsActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(
+                        // ORIGINAL IMPLEMENTATION
+                        // String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        // FFT SIZE REPORTING IMPLEMENTATION
+                        String.format("FS%sdictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        proc_fft_size_input.getText().toString(),
+                        // -----
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -253,7 +298,13 @@ public class SettingsActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(
+                        // ORIGINAL IMPLEMENTATION
+                        // String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        // FFT SIZE REPORTING IMPLEMENTATION
+                        String.format("FS%sdictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        proc_fft_size_input.getText().toString(),
+                        // -----
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -273,7 +324,13 @@ public class SettingsActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(
+                        // ORIGINAL IMPLEMENTATION
+                        // String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        // FFT SIZE REPORTING IMPLEMENTATION
+                        String.format("FS%sdictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        proc_fft_size_input.getText().toString(),
+                        // -----
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
@@ -293,7 +350,13 @@ public class SettingsActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(
+                        // ORIGINAL IMPLEMENTATION
+                        // String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        // FFT SIZE REPORTING IMPLEMENTATION
+                        String.format("FS%sdictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                        proc_fft_size_input.getText().toString(),
+                        // -----
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
                         num_overlaps_text.getText().toString(),
