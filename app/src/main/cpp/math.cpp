@@ -159,3 +159,101 @@ jobjectArray math::matmulDirect(JNIEnv *env, jobjectArray m1, jobjectArray m2, j
     }
     return ret_matrix;
 }
+
+jobjectArray math::hUpdateDirect(JNIEnv *env, jobjectArray v1, jobjectArray w1, jobjectArray h,
+                                 jint v1_rows, jint v1_cols, jint w1_rows, jint w1_cols,
+                                 jint h_rows, jint h_cols) {
+    // Converting jdoubleArray to matrix vectors
+    double* loc_v1[v1_rows];
+    for (int i = 0; i < v1_rows; i++) {
+        // Setting size of each row
+        loc_v1[i] = new double[v1_cols];
+        jdoubleArray temp_matrix = static_cast<jdoubleArray>(env->GetObjectArrayElement(v1, i));
+        jdouble *temp_data = env->GetDoubleArrayElements(temp_matrix, 0);
+        for (int j = 0; j < v1_cols; j++){
+            loc_v1[i][j] = temp_data[j];
+        }
+        env->ReleaseDoubleArrayElements(temp_matrix, temp_data, 0);
+    }
+    double* loc_w1[w1_rows];
+    for (int i = 0; i < w1_rows; i++) {
+        // Setting size of each row
+        loc_w1[i] = new double[w1_cols];
+        jdoubleArray temp_matrix = static_cast<jdoubleArray>(env->GetObjectArrayElement(w1, i));
+        jdouble *temp_data = env->GetDoubleArrayElements(temp_matrix, 0);
+        for (int j = 0; j < w1_cols; j++){
+            loc_w1[i][j] = temp_data[j];
+        }
+        env->ReleaseDoubleArrayElements(temp_matrix, temp_data, 0);
+    }
+    double* loc_h[h_rows];
+    for (int i = 0; i < h_rows; i++) {
+        // Setting size of each row
+        loc_w1[i] = new double[h_cols];
+        jdoubleArray temp_matrix = static_cast<jdoubleArray>(env->GetObjectArrayElement(h, i));
+        jdouble *temp_data = env->GetDoubleArrayElements(temp_matrix, 0);
+        for (int j = 0; j < h_cols; j++){
+            loc_h[i][j] = temp_data[j];
+        }
+        env->ReleaseDoubleArrayElements(temp_matrix, temp_data, 0);
+    }
+
+    // Performing update
+    for (int k = 0; k < w1_cols; k++) {
+        for (int n = 0; n < v1_cols; n++) {
+            // Calculating V1 estimate - matrix multiplication
+            double* v1_est[w1_rows];
+            for (int x = 0; x < w1_rows; x++){
+                v1_est[x] = new double[h_cols];
+                for (int y = 0; y < h_cols; y++){
+                    double temp = 0.0;
+                    for (int z = 0; z < h_rows; z++){
+                        temp = temp + (loc_w1[x][z] * loc_h[z][y]);
+                    }
+                    v1_est[x][y] = temp;
+                }
+            }
+
+            // Calculating the numerator and denominator
+            double numer = 0;
+            double denom = 0;
+            for (int f = 0; f < v1_rows; f++) {
+                numer = numer + loc_w1[f][k] * loc_v1[f][n] / v1_est[f][n];
+                denom = denom + loc_w1[f][k];
+            }
+            loc_h[k][n] = loc_h[k][n] * numer / denom;
+
+            // Deleting the temp matrix
+            for (int i = 0; i < v1_rows; i++){
+                delete [] v1_est[i];
+            }
+        }
+    }
+
+    // Releasing the local matrices
+    for (int i = 0; i < v1_rows; i++){
+        delete [] loc_v1[i];
+    }
+    for (int i = 0; i < w1_rows; i++){
+        delete [] loc_w1[i];
+    }
+
+    // Constructing jobjectArray structure
+    jdoubleArray ret_array = env->NewDoubleArray(h_cols);
+    jobjectArray ret_matrix = env->NewObjectArray(h_rows, env->GetObjectClass(ret_array), nullptr);
+    // Filling the jobjectArray
+    for (int i = 0; i < h_rows; i++) {
+        env->SetDoubleArrayRegion(ret_array, 0, h_cols, loc_h[i]);
+        env->SetObjectArrayElement(ret_matrix, i, ret_array);
+        // Allocate a new spot in memory for the next array
+        if(i != h_rows-1) {
+            ret_array = env->NewDoubleArray(h_cols);
+        }
+    }
+    // Release matmul matrix, vectors clear themselves
+    for (int i = 0; i < h_rows; i++){
+        delete[] loc_h[i];
+    }
+    return ret_matrix;
+
+}

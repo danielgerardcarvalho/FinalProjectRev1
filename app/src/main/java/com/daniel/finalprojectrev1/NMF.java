@@ -62,6 +62,9 @@ public class NMF {
     // operation flag
     private boolean operation_flag;
 
+    // update method flag - true (matrix update), false (full C++ update)
+    public boolean matrix_update_flag = true;
+
     // UI update variables
     private Activity activity;
     private TextView progress_update_indicator;
@@ -146,8 +149,14 @@ public class NMF {
             // Calculate the error
             Thread temp = new Thread(()->calcError_mt());
             temp.start();
-            // Update the matrices
-            update();
+            if  (matrix_update_flag) {
+                // Update the matrices - Multithreaded-matrix implementation
+                update();
+            } else {
+                // Update the matrices - Full C++ implementation
+                this.H = h_update_jd(this.V1, this.W1, this.H);
+            }
+
             // Calculate the error
             temp.join();
 //            calcError();
@@ -182,7 +191,7 @@ public class NMF {
     }
 
     private void update() {
-        // Kullback-Leibler Multiplicative Update Rule
+        // NOTE: Kullback-Leibler Multiplicative Update Rule
         // Pre-allocating data
         double[][] V1_estimate;// = new double[this.W1.length][this.H[0].length];
 //        double[][] numerator;// = new double[this.W1[0].length][this.V1[0].length];
@@ -228,7 +237,8 @@ public class NMF {
         denominator = mt_update_denom_val;
 
         this.H = mul(this.H, (divide(numerator, denominator)));
-//        // Kullback-Leibler Multiplicative Update Rule
+
+//        // NOTE: Kullback-Leibler Multiplicative Update Rule -depricated REMOVE
 //        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.f, this.n);
 //        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.k, this.n);
 //        for (int k = 0; k < this.k; k++) {
@@ -565,6 +575,16 @@ public class NMF {
     }
     public native double[][] matmulDirect(double[][] mat1, double[][] mat2, int mat1_rows, int mat1_cols,
                                   int mat2_rows, int mat2_cols);
+
+    // H UPDATE
+    public double[][] h_update_jd(double[][] v1_mat, double[][] w1_mat, double[][] h_mat){
+        double [][] ret = hUpdateDirect(v1_mat, w1_mat, h_mat, v1_mat.length, v1_mat[0].length,
+                w1_mat.length, w1_mat[0].length, h_mat.length, h_mat[0].length);
+        return ret;
+    }
+    public native double[][] hUpdateDirect(double[][] v1_mat, double[][] w1_mat, double[][] h_mat,
+                                           int v1_rows, int v1_cols, int w1_rows, int w1_cols,
+                                           int h_rows, int h_cols);
 
     // TRANSPOSE
 //    public Primitive64Store transpose_j(Primitive64Store matrix){
