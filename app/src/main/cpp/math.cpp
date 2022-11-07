@@ -221,6 +221,7 @@ jobjectArray math::hUpdateDirect(JNIEnv *env, jobjectArray v1, jobjectArray w1, 
                 numer = numer + loc_w1[f][k] * loc_v1[f][n] / v1_est[f][n];
                 denom = denom + loc_w1[f][k];
             }
+            // Updating the H matrix
             loc_h[k][n] = loc_h[k][n] * numer / denom;
 
             // Deleting the temp matrix
