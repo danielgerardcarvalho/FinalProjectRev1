@@ -8,11 +8,11 @@
     tools:context=".ScrollingActivity"
     tools:showIn="@layout/activity_scrolling">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="200dp"
-        android:layout_marginTop="48dp"
-        android:layout_marginEnd="200dp"
-        android:text="@string/large_text" />
+<!--    <TextView-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginStart="200dp"-->
+<!--        android:layout_marginTop="48dp"-->
+<!--        android:layout_marginEnd="200dp"-->
+<!--        android:text="@string/large_text" />-->
 </androidx.core.widget.NestedScrollView>
