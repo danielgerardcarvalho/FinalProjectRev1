@@ -14,13 +14,9 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.ScatterData;
 import com.github.mikephil.charting.data.ScatterDataSet;
-import com.github.mikephil.charting.formatter.IAxisValueFormatter;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
-import com.github.mikephil.charting.utils.ColorTemplate;
-
-import org.ojalgo.matrix.store.Primitive64Store;
 
 import java.util.ArrayList;
 
@@ -79,53 +75,12 @@ public class AnnotatedTimeline {
 
     public void constructPlot() {
         // Configuring the plot
-        // Setting the visibility of the plot
         plot.setVisibility(View.VISIBLE);
         // Configure Axes
-
-        /* Y - Axis */
         YAxis yl = plot.getAxisLeft();
         plot.getAxisRight().setEnabled(false);
         plot.getAxisLeft().setEnabled(false);
         yl.setAxisMinimum(0f);
-
-//        /* X - Axis */
-//        double num_data_points_per_discrete_label = (double)num_data_points/(double)num_labels;
-//        // Creating label values
-//        ArrayList<String> label_array = new ArrayList<>();
-//        double current_label_value = label_value_min;
-//        int label_value_array_count = 0;
-//        for (int i = 0; i < num_data_points; i++){
-//            if (i >= num_data_points_per_discrete_label * label_value_array_count){
-//                if (num_labels > 1+label_value_array_count){
-//                    current_label_value = ((double)label_value_max/(double)num_data_points) * i + label_value_min; //label_value_array.get(label_value_array_count++);
-//                } else {
-//                    current_label_value = label_value_max;
-//                }
-//            }
-//            label_array.add(String.format("%.1f", current_label_value));
-//        }
-//        label_array.set(label_array.size()-1, String.format("%.1f", label_value_max));
-//        // Configuring the x-axis
-//        // get x-axis object
-//        XAxis xl = plot.getXAxis();
-//        // set position of x-axis
-//        xl.setPosition(XAxis.XAxisPosition.BOTTOM);
-//        // enable x-axis
-//        xl.setEnabled(true);
-//        // set x-axis label values
-//        xl.setValueFormatter(new IndexAxisValueFormatter(label_array));
-//        // set the number of viewable labels
-//        xl.setLabelCount(num_labels);
-//        // Prevent last index from being clipped
-//        xl.setAvoidFirstLastClipping(true);
-////        xl.setGranularity(1.f);
-////        xl.setAxisMaximum((float) num_data_points);
-////        xl.setAxisMaximum((float) 0);
-////        plot.setVisibleXRange(1f, 1f);
-//        xl.setAxisMaximum(num_data_points);
-//        xl.setAxisMinimum(0);
-//        xl.setDrawGridLines(true);
 
         XAxis x_axis = plot.getXAxis();
         x_axis.setPosition(XAxis.XAxisPosition.BOTTOM);
@@ -147,40 +102,8 @@ public class AnnotatedTimeline {
         plot.setTouchEnabled(false);
         plot.setMaxVisibleValueCount((int)(1000000));
 
-
-//        // below line is use to disable the description
-//        // of our scatter plot.
-//        plot.getDescription().setEnabled(false);
-//
-//        // below line is use to draw grid background
-//        // and we are setting it to false.
-//        plot.setDrawGridBackground(false);
-//
-//        // below line is use to set touch
-//        // enable for our plot.
-//        plot.setTouchEnabled(true);
-//
-//        // below line is use to set maximum
-//        // highlight distance for our plot.
-//        plot.setMaxHighlightDistance(50f);
-//
-//        // below line is use to set
-//        // dragging for our plot.
-//        plot.setDragEnabled(true);
-
-        // below line is use to set scale
-        // to our plot.
         plot.setScaleEnabled(true);
-//        // below line is use to set maximum
-//        // visible count to our plot.
-//        plot.setMaxVisibleValueCount(200);
-//
-//        // below line is use to set
-//        // pinch zoom to our plot.
-//        plot.setPinchZoom(true);
 
-        // below line we are getting
-        // the legend of our plot.
         Legend l = plot.getLegend();
         l.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
         l.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
@@ -251,17 +174,5 @@ public class AnnotatedTimeline {
         ScatterData plot_data = new ScatterData(scatterDataSets);
         plot.setData(plot_data);
         plot.invalidate();
-//        // in below line we are creating a new array list for our data set.
-//        ArrayList<IScatterDataSet> dataSets = new ArrayList<>();
-//
-//        // in below line we are adding all
-//        // data sets to above array list.
-//        dataSets.add(set1); // add the data sets
-//        dataSets.add(set2);
-//        dataSets.add(set3);
-//
-//        ScatterData data1 = new ScatterData(dataSets);
-//        plot.setData(data1);
-//        plot.invalidate();
     }
 }
