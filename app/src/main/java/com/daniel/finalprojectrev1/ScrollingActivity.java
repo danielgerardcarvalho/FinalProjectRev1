@@ -30,8 +30,6 @@ import com.google.android.material.snackbar.Snackbar;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 public class ScrollingActivity extends AppCompatActivity {
@@ -533,12 +531,6 @@ public class ScrollingActivity extends AppCompatActivity {
         // Pre-calculating the fft twiddle factor values
         FFT fft = new FFT(Globals.proc_fft_size);
 
-        // TODO: (MEL) decide fate of mel-spectrogram things, current implementation is wrong, not
-        //  sure if mel-spectrum is needed at all. (removed in mean-time) - WILL NEED CONVERSION ojalgo
-//        //  Finding frequency range and melscale range for conversion
-//        Primitive64Store frequency_range = createArray(0, proc_sample_rate / 2.0, proc_resolution);
-//        Primitive64Store melscale_range = (((toPrimitive(frequency_range.divide(1127)).exp()).sub(1)).mul(700));
-
         // Thread infinite loop
         while(mt_audio_processing_flag) {
             // Wait if no value is available in the buffer
@@ -563,7 +555,6 @@ public class ScrollingActivity extends AppCompatActivity {
                 proc_data = bytesToShort(temp, Globals.cap_format);
             }
             // Converting from bytes to short
-//            proc_data = bytesToShort(temp, cap_format);
             // Normalising the capture data
             double[] norm_proc_data = norm(proc_data, max(abs(proc_data)));
             Log.v("AudioProcessing", String.format("Processing iput:" +
@@ -574,7 +565,6 @@ public class ScrollingActivity extends AppCompatActivity {
                     max(proc_data), min(mul(proc_data, 1.0)), max(norm_proc_data), min(norm_proc_data)));
 
             // Perform STFT
-            // TODO: (MEL) removed in mean-time
             double[][] stft = stft(norm_proc_data, window_size, hop_size, num_windows,
                     window_coeff, fft/*, frequency_range, melscale_range*/);
             // Check if processing buffer is full
@@ -605,7 +595,6 @@ public class ScrollingActivity extends AppCompatActivity {
         return ret;
     }
 
-    // TODO: (MEL) removed in mean-time.
     private double[][] stft(double[] data, int window_size, int hop_size, int num_windows,
                              double[] window_coeff, FFT fft/*, Primitive64Store frequency_range,
                              Primitive64Store melscale_range*/) {
@@ -625,26 +614,13 @@ public class ScrollingActivity extends AppCompatActivity {
             spec_window_imag = getValuesInRange(fft.getFFTImag(), 0, Globals.proc_fft_size/2);
             // Finding absolute values of complex matrix, scaling
             double temp_scaler = Globals.proc_fft_size/2;
-            // TODO: Try and remove
             double [] temp_real_spec_window = abs(divide(spec_window_real, temp_scaler), divide(spec_window_imag, temp_scaler));
-//            double [] temp_real_spec_window = abs(spec_window_real, spec_window_imag);
-//            temp_real_spec_window = divide(temp_real_spec_window, temp_scaler);
+
             // Adding the window to the spectrogram
             for (int j = 0; j < Globals.proc_fft_size/2; j++) {
                 temp_spectrogram[i][j] = temp_real_spec_window[j];
             }
-            // TODO: (MEL) removed in mean-time - NEEDS CONVERSION IF IMPLEMENTED AGAIN ojalgo
-//            // Converting spectrum to melscale
-//            double [] temp = specToMel(real_spec_window, frequency_range, melscale_range);
-//            if (i == 0) {
-//                mel_window = new DenseMatrix(temp.length, num_windows);
-//            }
-//            for (int j = 0; j < temp.length; j++) {
-//                mel_window.set(j, i, temp[j]);
-//            }
         }
-        // Converting from double[][] to Primitive64Storage
-//        spectrogram = createMatrix(temp_spectrogram);
 
         // Scaling the spectrogram
         spectrogram = pow(temp_spectrogram, 2.0);
@@ -671,86 +647,6 @@ public class ScrollingActivity extends AppCompatActivity {
 
         return spectrogram;
     }
-
-    // TODO: currently this fft method in not used (Deprecated for use of FFT class) - NEEDS CONVERSION IF USED AGAIN, ojalgo
-//    private DenseMatrixComplex fft(DenseMatrix data) {
-//        int size = data.getValues().length;
-//        if (size == 2) {
-//            DenseMatrix temp = toDenseMatrix(new double []{data.getValues()[0] + data.getValues()[1], data.getValues()[0] - data.getValues()[1]});
-//            return new DenseMatrixComplex(temp, DenseMatrix.zeros(temp.rows, 1));
-//        } else {
-//            DenseMatrixComplex data_even = fft(getEvenValues(data));
-//            DenseMatrixComplex data_odd = fft(getOddValues(data));
-//
-//            DenseMatrix factor_real = new DenseMatrix(size, 1);
-//            DenseMatrix factor_imag = new DenseMatrix(size, 1);
-//
-//            for (int i = 0; i < size; i++){
-//                double theta = -2 * Math.PI * i / size;
-//                factor_real.set(i, Math.cos(theta));
-//                factor_imag.set(i, Math.sin(theta));
-//            }
-//            DenseMatrixComplex factor = new DenseMatrixComplex(factor_real, factor_imag);
-//
-//            DenseMatrixComplex ret1 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, 0, size/2),data_odd));
-//            DenseMatrixComplex ret2 = addComplexMatrix(data_even, mulComplexMatrix(getValuesInRange(factor, size/2, size),data_odd));
-//
-//            return concatComplexMatrix(ret1, ret2, 0);
-//        }
-//    }
-
-
-    // TODO: currently this mel conversion method is not used (Deprecated as mel scale is not used), NEEDS CONVERSION IF USED AGAIN, ojalgo
-    // Converts frequency spectrum to melscale
-//    private double[] specToMel(DenseMatrix array, DenseMatrix freq_range, DenseMatrix mel_range){
-//        int freq_count = 0;
-//        int mel_count = 0;
-//
-//        int mel_temp_avg_iter = 0;
-//        // TODO: Change these to array lists to improve space use and remove size quess work
-//        double mel_temp_avg_array = 0.0;
-////        DenseMatrix mel_temp_avg_array = new DenseMatrix(proc_fft_size, 1);
-//
-////        int mel_scale_spectrum_iter = 0;
-//        // TODO: change this to arraylist as well
-//        ArrayList<Double> mel_scale_spectrum = new ArrayList<>();
-////        DenseMatrix mel_scale_spectrum = new DenseMatrix(proc_fft_size, 1);
-//
-//        while (freq_count < (int) (Globals.proc_fft_size/2)) {
-//            // Checking if in range
-//            if (freq_range.getValues()[freq_count] <= mel_range.getValues()[mel_count]) {
-//                mel_temp_avg_array = mel_temp_avg_array + array.getValues()[freq_count];
-////                mel_temp_avg_array.set(mel_temp_avg_iter, array.getValues()[freq_count]);
-//                mel_temp_avg_iter++;
-//                freq_count++;
-//            } else {
-//                if (mel_temp_avg_iter == 0) {
-//                    mel_scale_spectrum.add(array.getValues()[freq_count]);
-////                    mel_scale_spectrum.set(mel_scale_spectrum_iter, array.getValues()[freq_count]);
-//                } else if (mel_temp_avg_iter == 1) {
-//                    mel_scale_spectrum.add(mel_temp_avg_array);
-////                    mel_scale_spectrum.set(mel_scale_spectrum_iter,
-////                            mel_temp_avg_array.getValues()[0]);
-//                    mel_temp_avg_array = 0.0;
-//                } else {
-//                    mel_scale_spectrum.add(mel_temp_avg_array/(mel_temp_avg_iter*1.0));
-////                    mel_scale_spectrum.set(mel_scale_spectrum_iter, getMean(mel_temp_avg_array,
-////                            mel_temp_avg_iter));
-//                    mel_temp_avg_array = 0.0;
-//
-//                }
-//                mel_count++;
-//                mel_temp_avg_iter = 0;
-////                mel_scale_spectrum_iter++;
-//            }
-//        }
-//        double[] ret = new double[mel_scale_spectrum.size()];
-//        for (int i = 0; i < mel_scale_spectrum.size(); i++){
-//            ret[i] = mel_scale_spectrum.get(i);
-//        }
-//        return ret;
-//    }
-//
 
     // Classifier
     private void configureClassifier() {
@@ -917,86 +813,6 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
-
-    // Result display
-    // TODO: deprecated - moved to dedicated plotting sub system - remove
-    private void tempTestPlot(ImageView image){
-        // Setting the matrix size
-        int num_freq_bins = 128;
-        int num_time_frames = 500;
-        // Creating the matrix
-        double[][] spec_matrix = createMatrix(num_freq_bins, num_time_frames, 0.0);
-        spec_matrix[100][50] = 0.5;
-        spec_matrix[100][51] = 1;
-
-        // Normalise the matrix
-
-        double temp_max = max(spec_matrix);
-        for (int i = 0; i < num_freq_bins; i++){
-            for (int j = 0; j < num_time_frames; j++){
-                temp_max = Math.max(spec_matrix[i][j], temp_max);
-            }
-        }
-//        spec_matrix = spec_matrix.div(temp_max);
-
-        BitMapView sp_view_obj = new BitMapView(this, spec_matrix, image.getWidth());
-        image.setImageBitmap(sp_view_obj.bmp);
-    }
-    private void tempCapPlot(ImageView image){
-        while (proc_data == null){}
-        int width = Math.min(proc_data.length, 22050);
-        int height = 900;
-        int max = 0;
-        for (int i = 0; i < width; i++){
-            if (Math.abs(proc_data[i]) > max)
-                max = Math.abs(proc_data[i]);
-        }
-        // create matrix from proc_data
-        double[][] temp = createMatrix(height, Math.abs(width));
-
-        int iter = (int)(-height/2.0);
-        for (int i = 0; i < height; i++){
-            for (int j = 0; j < width; j++){
-                if ((Math.abs(proc_data[j]/(1.0*max))*(height/2.0)) >= Math.abs(iter)){
-                    temp[i][j] = 1;
-                } else {
-                    temp[i][j] = 0;
-                }
-            }
-            iter++;
-        }
-
-        BitMapView sp_view_obj = new BitMapView(this, temp, image.getWidth());
-        image.setImageBitmap(sp_view_obj.bmp);
-    }
-    private void tempProcPlot(ImageView image) {
-        // Extract spectrogram from the proc_buffer queue
-        while (proc_buffer == null || proc_buffer.size() == 0) {}
-        double[][] temp = proc_buffer.remove(0);
-        double[][] invert_temp = createMatrix(temp.length, temp[0].length);// createMatrix(temp.countRows(), temp.countColumns());
-        for (int i = temp.length-1; i >= 0; i--){
-            for (int j = 0; j < temp[0].length; j++) {
-                invert_temp[i][j]= temp[temp.length-(i+1)][j];
-            }
-        }
-        Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.length, invert_temp[0].length, invert_temp[0][0]));
-        double[][] val = divide(invert_temp, max(invert_temp));
-        Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.length, val[0].length, val[0][0]));
-        BitMapView sp_view_obj = new BitMapView(this, val, image.getWidth());
-        image.setImageBitmap(sp_view_obj.bmp);
-    }
-    private void tempClassifierPlot(ImageView image) {
-        // Extract spectrogram from the classifier_buffer queue
-        while (classifier_buffer == null || classifier_buffer.size() == 0) {}
-        double[][] temp = classifier_buffer.remove(0);
-
-        BitMapView sp_view_obj = new BitMapView(this, temp, image.getWidth());
-        image.setImageBitmap(sp_view_obj.bmp);
-    }
-
-    // Data handling
-
-
     /* Plotting */
     private void configurePlotting() {
         Log.v("Plotting", "Starting configPlotting");
@@ -1081,10 +897,8 @@ public class ScrollingActivity extends AppCompatActivity {
                     invert_temp[i][j] = temp[temp.length-(i+1)][j];
                 }
             }
-//            Log.v("display", String.format("temp -rows:%d, -cols:%d, value:%f", invert_temp.countRows(), invert_temp.countColumns(), invert_temp.get(0)));
             // TODO: cleanup
             double[][] val = divide(invert_temp, max(invert_temp));
-//            Log.v("display1", String.format("temp -rows:%d, -cols:%d, value:%f", val.countRows(), val.countColumns(), val.get(0)));
             BitMapView sp_view_obj = new BitMapView(this, val, plotting_image_views.get(curr_image_view).getWidth());
             plottingUpdate(sp_view_obj, curr_image_view);
             curr_image_view++;
@@ -1092,10 +906,6 @@ public class ScrollingActivity extends AppCompatActivity {
         // Classifier output plot
         if (classifier_plotting_flag && classifier_buffer != null && classifier_buffer.size() != 0) {
             double[][] temp = classifier_buffer.remove(0);
-//            BitMapView sp_view_obj = new BitMapView(this, temp, plotting_image_views.get(curr_image_view).getWidth());
-//            plottingUpdate(sp_view_obj, curr_image_view);
-            // TODO: add the iterator the the output string
-//            runOnUiThread(() -> progress_indicator_view.setText(getText(R.string.progress_indicator_string) + ));
             annotated_plot.updatePlot(this, temp);
         }
     }
@@ -1144,19 +954,15 @@ public class ScrollingActivity extends AppCompatActivity {
         } else {
             ret = new short[(int)(array.length/2)];
         }
-        // TODO: Forcing the array to int length - just for testing
-//        ret = new short[(int)(array.length/4)];
 
-        // TODO: CURRENT -works for recording, just not the data that I create in python
-        ByteBuffer buffer = ByteBuffer.wrap(array);
-//        buffer.order(ByteOrder.nativeOrder());
-//        buffer.order(ByteOrder.BIG_ENDIAN);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        int count = 0;
-        while(buffer.hasRemaining()){
-            ret[count++] = buffer.getShort();
-        }
-        return ret;
+//        // ByteBuffer function for shifting - slower
+//        ByteBuffer buffer = ByteBuffer.wrap(array);
+////      buffer.order(ByteOrder.LITTLE_ENDIAN);
+//        int count = 0;
+//        while(buffer.hasRemaining()){
+//            ret[count++] = buffer.getShort();
+//        }
+//        return ret;
 
 //        // BIG Endian (int to short)
 //        for (int i = 0; 4 * i + 3 < array.length; i++){
@@ -1169,24 +975,25 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        return ret;
 
-//        // Little Endian
-//        for (int i = 0; 2*i+1 < array.length; i++){
-//            ret[i] = (short) ((array[2*i+0] & 0xff) | ((array[2*i+1] & 0xff) << 8));
-//        }
-//        return ret;
+        // Little Endian
+        for (int i = 0; 2*i+1 < array.length; i++){
+            ret[i] = (short) ((array[2*i+0] & 0xff) | ((array[2*i+1] & 0xff) << 8));
+        }
+        return ret;
     }
     // Convert from byte array to short []
     private short[] bytesToFloatShort(byte[] array, int format) {
         short [] ret = new short[(int) (array.length / 4)];
 
-        ByteBuffer buffer = ByteBuffer.wrap(array);
-        buffer.order(ByteOrder.nativeOrder());
-//        buffer.order(ByteOrder.BIG_ENDIAN);
-        int count = 0;
-        while(buffer.hasRemaining()){
-            ret[count++] = (short) (32767 * buffer.getFloat());
-        }
-        return ret;
+//        // ByteBuffer function for shifting - slower
+//        ByteBuffer buffer = ByteBuffer.wrap(array);
+//        buffer.order(ByteOrder.nativeOrder());
+////        buffer.order(ByteOrder.BIG_ENDIAN);
+//        int count = 0;
+//        while(buffer.hasRemaining()){
+//            ret[count++] = (short) (32767 * buffer.getFloat());
+//        }
+//        return ret;
 
 //        // BIG Endian (int to short)
 //        for (int i = 0; 4 * i + 3 < array.length; i++){
@@ -1199,23 +1006,24 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        return ret;
 
-//        // Little Endian
-//        for (int i = 0; 2*i+1 < array.length; i++){
-//            ret[i] = (short) ((array[2*i+0] & 0xff) | ((array[2*i+1] & 0xff) << 8));
-//        }
-//        return ret;
+        // Little Endian
+        for (int i = 0; 2*i+1 < array.length; i++){
+            ret[i] = (short) ((array[2*i+0] & 0xff) | ((array[2*i+1] & 0xff) << 8));
+        }
+        return ret;
     }
     // Convert from byte array to int []
     private int[] bytesToInt(byte[] array) {
         int[] ret = new int[(int) (array.length/4)];
 
-        ByteBuffer buffer = ByteBuffer.wrap(array);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        int count = 0;
-        while(buffer.hasRemaining()){
-            ret[count++] = buffer.getInt();
-        }
-        return ret;
+//        // ByteBuffer function for shifting - slower
+//        ByteBuffer buffer = ByteBuffer.wrap(array);
+//        buffer.order(ByteOrder.LITTLE_ENDIAN);
+//        int count = 0;
+//        while(buffer.hasRemaining()){
+//            ret[count++] = buffer.getInt();
+//        }
+//        return ret;
 
 //        // Big Endian
 //        for (int i = 0; 4 * i + 3 < array.length; i++) {
@@ -1224,12 +1032,12 @@ public class ScrollingActivity extends AppCompatActivity {
 //        }
 //        return ret;
 
-//        // Little Endian
-//        for (int i = 0; 4 * i + 3 < array.length; i++) {
-//            ret[i] = ((array[4 * i + 3] & 0xff) << 24) | ((array[4 * i + 2] & 0xff) << 16) |
-//                    ((array[4 * i + 1] & 0xff) << 8) | (array[4 * i] & 0xff);
-//        }
-//        return ret;
+        // Little Endian
+        for (int i = 0; 4 * i + 3 < array.length; i++) {
+            ret[i] = ((array[4 * i + 3] & 0xff) << 24) | ((array[4 * i + 2] & 0xff) << 16) |
+                    ((array[4 * i + 1] & 0xff) << 8) | (array[4 * i] & 0xff);
+        }
+        return ret;
     }
 
     // Matrices
@@ -1261,7 +1069,6 @@ public class ScrollingActivity extends AppCompatActivity {
     // Mathematics
     // Element-wise multiplication of matrix
     private double[][] mul(double[][] matrix1, double[][] matrix2){
-        // TODO: check that .size, countRows, countColumns does what you think.
         double[][] ret = createMatrix(matrix1.length, matrix1[0].length);
         for (int i = 0; i < ret.length; i++) {
             for (int j = 0; j < ret[i].length; j++) {
@@ -1272,7 +1079,6 @@ public class ScrollingActivity extends AppCompatActivity {
     }
     // Element-wises multiplication of matrix and scalar
     private double[][] mul(double[][] matrix, double scalar){
-        // TODO: check that .size, countRows, countColumns does what you think.
         double[][] ret = createMatrix(matrix.length, matrix[0].length);
         for (int i = 0; i < ret.length; i++) {
             for (int j = 0; j < ret[i].length; j++) {
@@ -1332,7 +1138,6 @@ public class ScrollingActivity extends AppCompatActivity {
     }
     // Element-wise power of matrix by scalar
     private double[][] pow(double[][] matrix, double expon) {
-        // TODO: ojalgo CHECK - is the .size() the product of rows and cols
         for (int i = 0; i < matrix.length; i++){
             for (int j = 0; j < matrix[i].length; j++) {
                 matrix[i][j] = Math.pow(matrix[i][j], expon);

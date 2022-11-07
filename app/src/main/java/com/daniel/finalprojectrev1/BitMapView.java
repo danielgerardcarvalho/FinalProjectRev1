@@ -6,8 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.view.View;
 
-import org.ojalgo.matrix.store.Primitive64Store;
-
 public class BitMapView extends View {
     public Paint paint = new Paint();
     public Bitmap bmp;
@@ -21,7 +19,6 @@ public class BitMapView extends View {
     private void constructBitMap(double[][] data, int source_width){
         if (data != null) {
             paint.setStrokeWidth(1);
-            // TODO: ojalgo CHECK see that countRows and countColumns does what you think
             int rows = (int) data.length;
             int cols = (int) data[0].length;
 
