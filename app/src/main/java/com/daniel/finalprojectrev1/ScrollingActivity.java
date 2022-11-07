@@ -42,7 +42,6 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     /* General Operation */
-    //TODO: maybe change some of these to individual sub-systems later?
     private boolean system_flag;
     private final double MIN_CONST = Math.pow(10, -20);
 
@@ -71,8 +70,8 @@ public class ScrollingActivity extends AppCompatActivity {
     private Thread mt_classifier_thread;
     private Runnable mt_classifier_runnable;            // multi-thread handler (runnable)
     private boolean mt_classifier_flag;                 // multi-thread status flag
-    private double[][] classifier_data_prev;      // classifier input (previous) used for plotting
-    private double[][] classifier_data;           // classifier input
+    private double[][] classifier_data_prev;            // classifier input (previous) used for plotting
+    private double[][] classifier_data;                 // classifier input
     private ArrayList<double[][]> classifier_buffer;   // classifier output buffer
 
 
@@ -824,7 +823,6 @@ public class ScrollingActivity extends AppCompatActivity {
         // Configure update interval
         plotting_update_interval = 500;
 
-        // TODO: implement requested plots and have live updates
         if (capture_plotting_flag){
             plotting_image_views.add(findViewById(R.id.imageView0));
             TextView temp = findViewById(R.id.view_plotting_time_domain);
@@ -844,7 +842,6 @@ public class ScrollingActivity extends AppCompatActivity {
             annotated_plot = new AnnotatedTimeline(findViewById(R.id.plot));
         }
 
-        // TODO: Start Plotting Thread Runnable
         new Thread(mt_plotting_runnable).start();
     }
 
@@ -897,7 +894,6 @@ public class ScrollingActivity extends AppCompatActivity {
                     invert_temp[i][j] = temp[temp.length-(i+1)][j];
                 }
             }
-            // TODO: cleanup
             double[][] val = divide(invert_temp, max(invert_temp));
             BitMapView sp_view_obj = new BitMapView(this, val, plotting_image_views.get(curr_image_view).getWidth());
             plottingUpdate(sp_view_obj, curr_image_view);

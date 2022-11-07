@@ -38,7 +38,6 @@ public class SettingsActivity extends AppCompatActivity {
         binding = SettingsActivityBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // TODO: declaring the variables locally to reduce memory use
         /* Model Import Setting Inputs */
         TextView model_filename_view = (TextView) findViewById(R.id.import_model_filename_view);
         ImageView model_filename_marker_view = (ImageView) findViewById(R.id.import_model_filename_marker_view);
@@ -50,14 +49,12 @@ public class SettingsActivity extends AppCompatActivity {
         EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
         EditText num_inter_comp_text = (EditText) findViewById(R.id.input_model_import_num_components);
 
-        // TODO: declaring the variables locally to reduce memory use
         /* Capture Setting Inputs */
         EditText cap_sample_rate_input = (EditText) findViewById(R.id.input_cap_sample_rate);
         EditText cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
         Button cap_file_import_select_input = (Button) findViewById(R.id.input_cap_file_import_select);
         Spinner cap_format_input = (Spinner) findViewById(R.id.input_cap_format_option);
 
-        // TODO: declaring the variables locally to reduce memory use
         /* Processing Setting Inputs */
         EditText proc_fft_size_input = (EditText) findViewById(R.id.input_proc_fft_size);
         EditText proc_sample_rate_input = (EditText) findViewById(R.id.input_proc_sample_rate);
@@ -66,7 +63,6 @@ public class SettingsActivity extends AppCompatActivity {
         EditText proc_window_time_input = (EditText) findViewById(R.id.input_proc_window_time);
         EditText proc_hop_time_input = (EditText) findViewById(R.id.input_proc_hop_time);
 
-        // TODO: declaring the variables locally to reduce memory use
         /* Classifier Setting Inputs */
         EditText classifier_fft_size_input = (EditText) findViewById(R.id.input_classifier_fft_size);
         EditText classifier_num_classes_input = (EditText) findViewById(R.id.input_classifier_num_classes);
@@ -537,12 +533,6 @@ public class SettingsActivity extends AppCompatActivity {
         // Number of internal components in NMF model, taken from imported data
         Globals.classifier_num_inter_comp = Globals.model_num_inter_comp * Globals.model_num_training_samples;
 
-        // TODO: possibly add a check for the validity of the accepted/rejected settings. Maybe make
-        //  a system that states which settings are missing or in error. Therefore returning true
-        //  or false.
-
-        // TODO: possibly use this function return value and other booleans to check if system is
-        //  correctly configured, may have issue if running straight from default values.
         isValidModelFilename(model_filename_view, model_filename_marker_view);
 
         return true;
@@ -610,7 +600,6 @@ public class SettingsActivity extends AppCompatActivity {
         }
         if (Globals.classifier_imported_nmf_model == null) {
             Log.e("Classifier", "The import failed somewhere, the returned object is null");
-            // TODO: Handle failures better, maybe inform user and revert to default values?
             return;
         }
         Log.v("Classifier", String.format("Imported values:" +

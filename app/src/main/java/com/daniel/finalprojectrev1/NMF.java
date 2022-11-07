@@ -63,7 +63,7 @@ public class NMF {
     private boolean operation_flag;
 
     // update method flag - true (matrix update), false (full C++ update)
-    public boolean matrix_update_flag = true;
+    public boolean matrix_update_flag = false;
 
     // UI update variables
     private Activity activity;
@@ -136,12 +136,8 @@ public class NMF {
 
     /* Primary methods */
     private void run() throws InterruptedException {
-        // TODO: could initialise several H matrices and use one that achieves best results
-        //  or average the results between them. Will this really help? obviouse computation and
-        //  storage burden. Maybe different binarisations. Don't need multiple runs for that!
 
         // Starting the computation loop
-        // TODO: add error thresholding
         // Re-initialising the H matrix
         initH();
 
@@ -182,9 +178,7 @@ public class NMF {
             curr_iter_num++;
         }
         // Saving result
-        // TODO: Check if this is matrix multiplication, check if countRows and countColumns does what is expected
         // Calculating V2, V2 = W2 x H
-        // TODO: CONVERTED C++ FUNCTION
 //        this.W2.multiply(this.H, this.V2);
         this.V2 = matmul_jd(this.W2, this.H);
         Log.v("NMFRun", String.format("Size of A: (%d, %d), Size of B(%d, %d), Size of C (%d, %d)", this.W2.length, this.W2[0].length, this.H.length, this.H[0].length, this.V2.length, this.V2[0].length));
@@ -194,21 +188,15 @@ public class NMF {
         // NOTE: Kullback-Leibler Multiplicative Update Rule
         // Pre-allocating data
         double[][] V1_estimate;// = new double[this.W1.length][this.H[0].length];
-//        double[][] numerator;// = new double[this.W1[0].length][this.V1[0].length];
         double[][] denominator;// = new double[this.W1[0].length][this.V1[0].length];
         mt_update_v1_est_val = new double[this.W1.length][this.H[0].length];
-//        mt_update_numer_val = new double[this.W1[0].length][this.V1[0].length];
         mt_update_denom_val = new double[this.W1[0].length][this.V1[0].length];
 
         // Calculating the V1 estimate
-//        this.W1.multiply(this.H, V1_estimate);
-//        double[][] V1_estimate = matmul_jd(this.W1, this.H);
         Thread v1_est_thread = new Thread( () -> update_v1_est_mt(this.W1, this.H));
         v1_est_thread.start();
 
         // Calculating the denominator
-//        (this.W1.transpose()).multiply(this.ones, denominator);
-//        double[][] denominator = matmul_jd(transpose(this.W1), this.ones);
         Thread denom_thread = new Thread( () -> update_denominator_mt(this.W1, this.ones));
         denom_thread.start();
 
@@ -221,48 +209,18 @@ public class NMF {
         V1_estimate = mt_update_v1_est_val;
 
         // Calculating the numerator
-//        (this.W1.transpose()).multiply(divide(this.V1, V1_estimate), numerator);
         double[][] numerator = matmul_jd(transpose(this.W1), divide(this.V1, V1_estimate));
-//        Thread numer_thread = new Thread(() -> update_numerator_mt(this.W1, this.V1, V1_estimate));
 
 
         // Wait for threads to synchronise
         try {
             denom_thread.join();
-//            numer_thread.join();
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
-//        numerator = mt_update_numer_val;
         denominator = mt_update_denom_val;
 
         this.H = mul(this.H, (divide(numerator, denominator)));
-
-//        // NOTE: Kullback-Leibler Multiplicative Update Rule -depricated REMOVE
-//        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.f, this.n);
-//        Primitive64Store numerator = Primitive64Store.FACTORY.make(this.k, this.n);
-//        for (int k = 0; k < this.k; k++) {
-//            this.W1.multiply(this.H, V1_estimate);
-//            this.W1.transpose().multiply(divide(this.V1, V1_estimate), numerator);
-//            double denominator_sum = sum(toPrimitive(this.W1.column(k)));
-//            for (int n = 0; n < this.n; n++) {
-//                double numerator_sum = numerator.get(k,n);
-//                this.H.set(k, n, this.H.get(k,n) * numerator_sum/denominator_sum);
-//            }
-//        }
-//        Log.v("NMFUpdate_out", String.format("Shapes: f=%d, e=%d, n=%d, k=%d" +
-//                        "\n\tV1: (%d,%d)" +
-//                        "\n\tW1: (%d,%d)" +
-//                        "\n\tH: (%d,%d)" +
-//                        "\n\tones: (%d,%d)" +
-//                        "\n\tnumerator: (%d,%d)" +
-//                        "\n\tdenominator: (%d,%d)" +
-//                        "\n\tV1 est: (%d,%d)", this.f, this.e, this.n, this.k, this.V1.countRows(),
-//                this.V1.countColumns(), this.W1.countRows(), this.W1.countColumns(),
-//                this.H.countRows(), this.H.countColumns(), this.ones.countRows(),
-//                this.ones.countColumns(), numerator.countRows(), numerator.countColumns(),
-//                denominator.countRows(), denominator.countColumns(), V1_estimate.countRows(),
-//                V1_estimate.countColumns()));
     }
     private void update_numerator_mt(double[][] w1, double[][] v1, double[][] v1_est){
         mt_update_numer_val = matmul_jd(transpose(w1), divide(v1, v1_est));
@@ -276,43 +234,12 @@ public class NMF {
 
     private void calcError() {
         // NOTE: current implementation
-//        Primitive64Store V1_est = toPrimitive(this.W1.multiply(this.H).add(this.MIN_CONST));
         double[][] V1_est = add(matmul_jd(this.W1, this.H), this.MIN_CONST);
         double[][] deviation_log = log(divide(this.V1, V1_est));
         double[][] deviation = mul(this.V1, deviation_log);
         error.add(sum(add(deviation,sub(V1_est,this.V1))));
-//        error.add(sum(toPrimitive(deviation.add(V1_est.subtract(this.V1)))));
-
-//        error.add(sum(toPrimitive(this.V1.multiply(toPrimitive(log(divide(this.V1, V1_est)))).subtract(this.V1).add(V1_est))));
-
-
-//        // Clarity improvement
-//        // Pre-allocating data
-//        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
-//        Primitive64Store distribution = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
-//        Primitive64Store distribution_error = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
-//        // Calculating V1 estimate
-//        this.W1.multiply(this.H, V1_estimate);
-//        V1_estimate = toPrimitive(V1_estimate.add(Math.pow(10,-30)));
-//        // Calculating distribution
-//        distribution = mul(this.V1, log(divide(this.V1, V1_estimate)));
-//        // Calculating distribution error
-//        distribution_error = toPrimitive(this.V1.add(V1_estimate));
-//        // Calculating error
-//        this.error.add(sum(toPrimitive(distribution.subtract(distribution_error))));
-
-//        Primitive64Store V1_estimate = Primitive64Store.FACTORY.make(this.V1.countRows(), this.V1.countColumns());
-//        this.W1.multiply(this.H, V1_estimate);
-//        V1_estimate = toPrimitive(V1_estimate.add(this.MIN_CONST));
-//        Primitive64Store dif = toPrimitive(V1_estimate.subtract(this.V1));
-//        Primitive64Store div_dif = log(divide(this.V1, V1_estimate), 10);
-//        error.add(sum(toPrimitive(this.V1.multiply(div_dif).add(dif))));
     }
     private void calcError_mt() {
-//        double [][] p1 = {{1,1},{2,2},{3,3}};
-//        double [][] p2 = {{1,1,1},{2,2,2}};
-//        double [][] p4 = matmul_j(p1, p2);
-//        double [][] p3 = matmul_jd(p1, p2);
         double[][] V1_est = add(matmul_jd(this.W1, this.H), this.MIN_CONST);
         double[][] deviation_log = log(divide(this.V1, V1_est));
         double[][] deviation = mul(this.V1, deviation_log);
@@ -330,9 +257,7 @@ public class NMF {
         // Creating the matrices
         this.H = Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Gamma(1.0, 1.0)).toRawCopy2D();
         this.H = add(divide(this.H, max(abs(this.H))), MIN_CONST);
-//        this.H = toPrimitive(this.H.divide(max(abs(this.H))).add(MIN_CONST));
         Log.e("NMF TEST", String.format("H max: %f, min: %f", max(abs(this.H)), min(abs(this.H))));
-//        this.H = (Primitive64Store) Primitive64Store.FACTORY.makeFilled(this.k, this.n, new Poisson(1.0));
     }
 
     public void loadV1(double[][] data) {
@@ -436,7 +361,6 @@ public class NMF {
     }
     // Element-wise multiplication of matrix
     private double[][] mul(double[][] matrix1, double[][] matrix2){
-        // TODO: check that .size, countRows, countColumns does what you think.
         double[][] ret = new double[matrix1.length][matrix1[0].length];
         for (int i = 0; i < ret.length; i++) {
             for (int j = 0; j < ret[i].length; j++) {
@@ -527,16 +451,6 @@ public class NMF {
         return ret;
     }
 
-//    public Primitive64Store transpose(Primitive64Store matrix){
-//        Primitive64Store ret = createMatrix(matrix.countColumns(), matrix.countRows());
-//        for (int i = 0; i < matrix.countColumns(); i++){
-//            for (int j = 0; j < matrix.countRows(); j++){
-//                ret.set(i,j, matrix.get(j,i));
-//            }
-//        }
-//        return ret;
-//    }
-
     // C++ FUNCTIONS - MATMUL
     public double[][] matmul_j(double[][] matrix1, double[][] matrix2){
         // Calculate matmul
@@ -585,29 +499,5 @@ public class NMF {
     public native double[][] hUpdateDirect(double[][] v1_mat, double[][] w1_mat, double[][] h_mat,
                                            int v1_rows, int v1_cols, int w1_rows, int w1_cols,
                                            int h_rows, int h_cols);
-
-    // TRANSPOSE
-//    public Primitive64Store transpose_j(Primitive64Store matrix){
-//        double[] temp_mat = transpose(matrix.data, (int) matrix.countRows(), (int) matrix.countColumns());
-//        // Convert to Primitive store
-//        Primitive64Store ret = createMatrix(matrix.countRows(), matrix.countColumns());
-//        for (int i = 0; i < matrix.countRows() * matrix.countColumns(); i++){
-//            ret.set(i, temp_mat[i]);
-//        }
-//        return ret;
-//    }
-//    public native double[] transpose(double[] mat, int mat_rows, int mat_cols);
-
-    // ADD
-//    public Primitive64Store add_j(Primitive64Store matrix1, Primitive64Store matrix2){
-//        double[] temp_mat = add(matrix1.data, matrix2.data, (int) matrix1.countRows(), (int) matrix1.countColumns());
-//        // Converting to Primitive store
-//        Primitive64Store ret = createMatrix(matrix1.countRows(), matrix1.countColumns());
-//        for (int i = 0; i < matrix1.countRows() * matrix1.countColumns(); i++){
-//            ret.set(i, temp_mat[i]);
-//        }
-//        return ret;
-//    }
-//    public native double[] add(double[] mat1, double[] mat2, int mat_rows, int mat_cols);
 }
 
