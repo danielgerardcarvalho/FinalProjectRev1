@@ -190,7 +190,7 @@ public class ScrollingActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
@@ -811,6 +811,7 @@ public class ScrollingActivity extends AppCompatActivity {
             classifier_buffer.add(V2_output);
         }
     }
+
 
     /* Plotting */
     private void configurePlotting() {
