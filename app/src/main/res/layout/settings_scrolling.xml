@@ -114,7 +114,7 @@
                     android:ems="10"
                     android:inputType="numberSigned|number"
                     android:singleLine="true"
-                    android:hint="30"
+                    android:hint="0"
                     android:textSize="14sp" />
 
                 <EditText
@@ -126,7 +126,7 @@
                     android:ems="10"
                     android:inputType="numberSigned|number"
                     android:singleLine="true"
-                    android:hint="40"
+                    android:hint="10"
                     android:textSize="14sp" />
             </LinearLayout>
 
@@ -146,7 +146,7 @@
                 android:ems="10"
                 android:inputType="number"
                 android:singleLine="true"
-                android:hint="5"
+                android:hint="12"
                 android:textSize="14sp" />
 
             <TextView
@@ -165,7 +165,7 @@
                 android:ems="10"
                 android:inputType="number"
                 android:singleLine="true"
-                android:hint="50"
+                android:hint="20"
                 android:textSize="14sp" />
 
             <TextView
@@ -185,7 +185,7 @@
                 android:focusable="false"
                 android:inputType="number"
                 android:singleLine="true"
-                android:hint="500"
+                android:hint="50"
                 android:textSize="14sp" />
 
         </LinearLayout>
@@ -250,12 +250,12 @@
             android:gravity="center"
             android:orientation="horizontal">
 
-<!--            <Switch-->
-<!--                android:id="@+id/input_cap_file_import"-->
-<!--                android:layout_width="170dp"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:text="@string/cap_import_file"-->
-<!--                android:textStyle="italic"/>-->
+            <!--            <Switch-->
+            <!--                android:id="@+id/input_cap_file_import"-->
+            <!--                android:layout_width="170dp"-->
+            <!--                android:layout_height="wrap_content"-->
+            <!--                android:text="@string/cap_import_file"-->
+            <!--                android:textStyle="italic"/>-->
             <TextView
                 android:id="@+id/view_file_import"
                 android:layout_width="wrap_content"
@@ -298,7 +298,7 @@
                 android:ems="10"
                 android:inputType="number"
                 android:singleLine="true"
-                android:hint="22050"
+                android:hint="20000"
                 android:textSize="14sp" />
 
             <TextView
@@ -576,7 +576,7 @@
                 android:layout_weight="1"
                 android:autoText="false"
                 android:ems="10"
-                android:hint="100"
+                android:hint="5"
                 android:inputType="number"
                 android:singleLine="true"
                 android:textSize="14sp" />
@@ -596,10 +596,10 @@
 
 
         <!--        <TextView-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:layout_margin="@dimen/text_margin"-->
-<!--            android:text="@string/large_text" />-->
+        <!--            android:layout_width="wrap_content"-->
+        <!--            android:layout_height="wrap_content"-->
+        <!--            android:layout_margin="@dimen/text_margin"-->
+        <!--            android:text="@string/large_text" />-->
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

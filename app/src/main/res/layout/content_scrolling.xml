@@ -93,7 +93,7 @@
                 android:layout_weight="1"
                 android:autoText="false"
                 android:ems="10"
-                android:hint="100"
+                android:hint="5"
                 android:inputType="number"
                 android:singleLine="true"
                 android:textSize="14sp" />
@@ -195,10 +195,10 @@
 
 
         <!--        <TextView-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:layout_margin="@dimen/text_margin"-->
-<!--            android:text="@string/large_text" />-->
+        <!--            android:layout_width="wrap_content"-->
+        <!--            android:layout_height="wrap_content"-->
+        <!--            android:layout_margin="@dimen/text_margin"-->
+        <!--            android:text="@string/large_text" />-->
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

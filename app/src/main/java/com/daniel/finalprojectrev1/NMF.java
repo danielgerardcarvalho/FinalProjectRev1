@@ -136,12 +136,7 @@ public class NMF {
 
     /* Primary methods */
     private void run() throws InterruptedException {
-        // TODO: could initialise several H matrices and use one that achieves best results
-        //  or average the results between them. Will this really help? obviouse computation and
-        //  storage burden. Maybe different binarisations. Don't need multiple runs for that!
-
         // Starting the computation loop
-        // TODO: add error thresholding
         // Re-initialising the H matrix
         initH();
 
@@ -157,7 +152,7 @@ public class NMF {
             }
             // Calculate the error
             temp.join();
-//            calcError();
+            calcError();
             // Progress display, giving error and current iteration number and total iterations
             if (curr_iter_num % 1 == 0){
                 // Update UI
@@ -183,7 +178,6 @@ public class NMF {
         this.V2 = matmul_jd(this.W2, this.H);
         Log.v("NMFRun", String.format("Size of A: (%d, %d), Size of B(%d, %d), Size of C (%d, %d)", this.W2.length, this.W2[0].length, this.H.length, this.H[0].length, this.V2.length, this.V2[0].length));
     }
-
     private void update() {
         // Kullback-Leibler Multiplicative Update Rule
         // Pre-allocating data
