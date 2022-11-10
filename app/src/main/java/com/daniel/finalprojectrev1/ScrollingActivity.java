@@ -847,6 +847,37 @@ public class ScrollingActivity extends AppCompatActivity {
                     }
                 }
             }
+            // Column number limit
+            for (int i = 0; i < V2_output[0].length; i++) {
+                double temp_sum = 0;
+                for (int j = 0; j < V2_output.length; j++) {
+                    temp_sum = temp_sum + V2_output[j][i];
+                }
+                if (temp_sum > 2) {
+                    double max_col = -1;
+                    double sec_max_col = -1;
+                    int loc_max = -1;
+                    int loc_sec_max = -1;
+                    for (int j = 0; j < nmf.getV2().length; j++) {
+                        if (max_col < nmf.getV2()[j][i]) {
+                            max_col = nmf.getV2()[j][i];
+                            loc_max = j;
+                        }
+                        if (sec_max_col < nmf.getV2()[j][i] && nmf.getV2()[j][i] != max_col) {
+                            sec_max_col = nmf.getV2()[j][i];
+                            loc_sec_max = j;
+                        }
+                    }
+                    for (int j = 0; j < V2_output.length; j++){
+                        if (j == loc_max || j == loc_sec_max) {
+                            V2_output[j][i] = 1;
+                        } else {
+                            V2_output[j][i] = 0;
+                        }
+                    }
+                }
+
+            }
             // Outlier Removal and Correction
             // Adding fillers for small gaps in annotations
             int min_len = 3;
