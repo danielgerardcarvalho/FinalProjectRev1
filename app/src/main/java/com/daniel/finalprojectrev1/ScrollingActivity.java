@@ -143,6 +143,12 @@ public class ScrollingActivity extends AppCompatActivity {
                 system_flag = false;
 
             } else {
+                // Checking if settings have been set
+                if (!Globals.sys_settings_flag) {
+                    // Load default settings
+                    Globals.loadDefaults(cap_time_interval_input, classifier_num_iters_input);
+                }
+
                 // Update Settings
                 updateSettings(cap_time_interval_input, classifier_num_iters_input);
 

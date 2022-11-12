@@ -44,10 +44,10 @@ public class SettingsActivity extends AppCompatActivity {
         ImageView model_filename_marker_view = (ImageView) findViewById(R.id.import_model_filename_marker_view);
         EditText num_class_events_text = (EditText) findViewById(R.id.input_model_import_num_event_classes);
         EditText clip_len_text = (EditText) findViewById(R.id.input_model_import_clip_len);
-        EditText num_overlaps_text = (EditText) findViewById(R.id.input_model_import_num_overlaps);
+//        EditText num_overlaps_text = (EditText) findViewById(R.id.input_model_import_num_overlaps);
         EditText snr_range_min_text = (EditText) findViewById(R.id.input_model_import_snr_range_min);
-        EditText snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
-        EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
+//        EditText snr_range_max_text = (EditText) findViewById(R.id.input_model_import_snr_range_max);
+//        EditText num_training_sample_text = (EditText) findViewById(R.id.input_model_import_training_size);
         EditText num_inter_comp_text = (EditText) findViewById(R.id.input_model_import_num_components);
 
         // TODO: declaring the variables locally to reduce memory use
@@ -111,8 +111,8 @@ public class SettingsActivity extends AppCompatActivity {
         apply_settings_button.setOnClickListener(button -> {
             // Importing input user settings and checking if these settings are valid
             boolean valid_flag = convertSettingInputs( model_filename_view, model_filename_marker_view,
-                    num_class_events_text, clip_len_text, num_overlaps_text, snr_range_min_text,
-                    snr_range_max_text, num_training_sample_text, num_inter_comp_text,
+                    num_class_events_text, clip_len_text, /*num_overlaps_text,*/ snr_range_min_text,
+                    /*snr_range_max_text, num_training_sample_text,*/ num_inter_comp_text,
                     cap_sample_rate_input, cap_time_interval_input, cap_format_input,
                     proc_fft_size_input, proc_sample_rate_input, classifier_fft_size_input,
                     classifier_num_classes_input, classifier_num_inter_comp_input,
@@ -120,8 +120,8 @@ public class SettingsActivity extends AppCompatActivity {
             );
             // Update UI fields
             uiFieldUpdate(model_filename_view, num_class_events_text, clip_len_text,
-                    num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                    num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
+                    /*num_overlaps_text,*/ snr_range_min_text, /*snr_range_max_text,
+                    num_training_sample_text,*/ cap_sample_rate_input, cap_time_interval_input,
                     cap_format_input, proc_fft_size_input, proc_sample_rate_input,
                     proc_num_time_frames_input, proc_resolution_input, proc_window_time_input,
                     proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
@@ -144,14 +144,14 @@ public class SettingsActivity extends AppCompatActivity {
 
         /* Model Import Filename Update Logic */
         modelFilenameUpdate(model_filename_view,  model_filename_marker_view, num_class_events_text,
-                clip_len_text, num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                num_training_sample_text
+                clip_len_text, /*num_overlaps_text,*/ snr_range_min_text/*, snr_range_max_text,
+                num_training_sample_text*/
         );
 
         if (Globals.sys_settings_flag){
             uiFieldUpdate(model_filename_view, num_class_events_text, clip_len_text,
-                    num_overlaps_text, snr_range_min_text, snr_range_max_text,
-                    num_training_sample_text, cap_sample_rate_input, cap_time_interval_input,
+                    /*num_overlaps_text,*/ snr_range_min_text, /*snr_range_max_text,
+                    num_training_sample_text,*/ cap_sample_rate_input, cap_time_interval_input,
                     cap_format_input, proc_fft_size_input, proc_sample_rate_input,
                     proc_num_time_frames_input, proc_resolution_input, proc_window_time_input,
                     proc_hop_time_input, classifier_fft_size_input, classifier_num_classes_input,
@@ -183,8 +183,8 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void modelFilenameUpdate(TextView model_filename_view, ImageView model_filename_marker_view,
                                      EditText num_class_events_text, EditText clip_len_text,
-                                     EditText num_overlaps_text, EditText snr_range_min_text,
-                                     EditText snr_range_max_text, EditText num_training_sample_text){
+                                     /*EditText num_overlaps_text,*/ EditText snr_range_min_text/*,
+                                     EditText snr_range_max_text, EditText num_training_sample_text*/){
 
         // Updating model filename
         num_class_events_text.addTextChangedListener(new TextWatcher() {
@@ -193,13 +193,13 @@ public class SettingsActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_snr%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
+                        //num_overlaps_text.getText().toString(),
+                        snr_range_min_text.getText().toString()/*,
                         snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
+                        num_training_sample_text.getText().toString()*/
                 ));
                 isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
@@ -213,13 +213,13 @@ public class SettingsActivity extends AppCompatActivity {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_snr%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
+                        //num_overlaps_text.getText().toString(),
+                        snr_range_min_text.getText().toString()/*,
                         snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
+                        num_training_sample_text.getText().toString()*/
                 ));
                 isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
@@ -227,39 +227,39 @@ public class SettingsActivity extends AppCompatActivity {
             public void afterTextChanged(Editable editable) {
             }
         });
-        num_overlaps_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
+//        num_overlaps_text.addTextChangedListener(new TextWatcher() {
+//            @Override
+//            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+//            }
+//            @Override
+//            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+//                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+//                        num_class_events_text.getText().toString(),
+//                        clip_len_text.getText().toString(),
+//                        num_overlaps_text.getText().toString(),
+//                        snr_range_min_text.getText().toString(),
+//                        snr_range_max_text.getText().toString(),
+//                        num_training_sample_text.getText().toString()
+//                ));
+//                isValidModelFilename(model_filename_view, model_filename_marker_view);
+//            }
+//            @Override
+//            public void afterTextChanged(Editable editable) {
+//            }
+//        });
         snr_range_min_text.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
             }
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+                model_filename_view.setText(String.format("dictW_cl%s_len%s_snr%s",
                         num_class_events_text.getText().toString(),
                         clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
+                        //num_overlaps_text.getText().toString(),
+                        snr_range_min_text.getText().toString()/*,
                         snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
+                        num_training_sample_text.getText().toString()*/
                 ));
                 isValidModelFilename(model_filename_view, model_filename_marker_view);
             }
@@ -267,58 +267,50 @@ public class SettingsActivity extends AppCompatActivity {
             public void afterTextChanged(Editable editable) {
             }
         });
-        snr_range_max_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-        num_training_sample_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
-                        num_class_events_text.getText().toString(),
-                        clip_len_text.getText().toString(),
-                        num_overlaps_text.getText().toString(),
-                        snr_range_min_text.getText().toString(),
-                        snr_range_max_text.getText().toString(),
-                        num_training_sample_text.getText().toString()
-                ));
-                isValidModelFilename(model_filename_view, model_filename_marker_view);
-            }
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
+//        snr_range_max_text.addTextChangedListener(new TextWatcher() {
+//            @Override
+//            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+//            }
+//            @Override
+//            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+//                model_filename_view.setText(String.format("dictW_cl%s_len%s_snr(%s, %s)",
+//                        num_class_events_text.getText().toString(),
+//                        clip_len_text.getText().toString(),
+//                        //num_overlaps_text.getText().toString(),
+//                        snr_range_min_text.getText().toString(),
+//                        snr_range_max_text.getText().toString()/*,
+//                        num_training_sample_text.getText().toString()*/
+//                ));
+//                isValidModelFilename(model_filename_view, model_filename_marker_view);
+//            }
+//            @Override
+//            public void afterTextChanged(Editable editable) {
+//            }
+//        });
+//        num_training_sample_text.addTextChangedListener(new TextWatcher() {
+//            @Override
+//            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+//            }
+//            @Override
+//            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+//                model_filename_view.setText(String.format("dictW_cl%s_len%s_snr(%s, %s)_tsize%s",
+//                        num_class_events_text.getText().toString(),
+//                        clip_len_text.getText().toString(),
+//                        //num_overlaps_text.getText().toString(),
+//                        snr_range_min_text.getText().toString(),
+//                        snr_range_max_text.getText().toString(),
+//                        num_training_sample_text.getText().toString()
+//                ));
+//                isValidModelFilename(model_filename_view, model_filename_marker_view);
+//            }
+//            @Override
+//            public void afterTextChanged(Editable editable) {
+//            }
+//        });
 
     }
 
     private void getUserSelectedFile(ActivityResultLauncher<Intent> activity_launcher){
-
-//        // Old version (Deprecated by google) - working
-//        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-//        intent.addCategory(Intent.CATEGORY_OPENABLE);
-//        intent.setType("*/*");
-//        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-//        startActivityForResult(intent, 0);
-
         // New version - working
         Intent file_intent = new Intent(Intent.ACTION_GET_CONTENT);
         file_intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -344,9 +336,9 @@ public class SettingsActivity extends AppCompatActivity {
     /* Saving settings */
     private boolean convertSettingInputs(TextView model_filename_view, ImageView model_filename_marker_view,
                                          EditText num_class_events_text, EditText clip_len_text,
-                                         EditText num_overlaps_text, EditText snr_range_min_text,
-                                         EditText snr_range_max_text,
-                                         EditText num_training_sample_text,
+                                         /*EditText num_overlaps_text,*/ EditText snr_range_min_text,
+                                         //EditText snr_range_max_text,
+                                         //EditText num_training_sample_text,
                                          EditText num_inter_comp_text,
                                          EditText cap_sample_rate_input,
                                          EditText cap_time_interval_input,
@@ -371,11 +363,11 @@ public class SettingsActivity extends AppCompatActivity {
             Globals.model_clip_len = Integer.parseInt(clip_len_text.getHint().toString());
         }
         // - model import number of overlaps
-        if (!TextUtils.isEmpty(num_overlaps_text.getText())) {
+        /*if (!TextUtils.isEmpty(num_overlaps_text.getText())) {
             Globals.model_num_overlaps = Integer.parseInt(num_overlaps_text.getText().toString());
         } else {
             Globals.model_num_overlaps = Integer.parseInt(num_overlaps_text.getHint().toString());
-        }
+        }*/
         // - model import snr range min
         if (!TextUtils.isEmpty(snr_range_min_text.getText())) {
             Globals.model_snr_range_min = Integer.parseInt(snr_range_min_text.getText().toString());
@@ -383,17 +375,17 @@ public class SettingsActivity extends AppCompatActivity {
             Globals.model_snr_range_min = Integer.parseInt(snr_range_min_text.getHint().toString());
         }
         // - model import snr range max
-        if (!TextUtils.isEmpty(snr_range_max_text.getText())) {
-            Globals.model_snr_range_max = Integer.parseInt(snr_range_max_text.getText().toString());
-        } else {
-            Globals.model_snr_range_max = Integer.parseInt(snr_range_max_text.getHint().toString());
-        }
+//        if (!TextUtils.isEmpty(snr_range_max_text.getText())) {
+//            Globals.model_snr_range_max = Integer.parseInt(snr_range_max_text.getText().toString());
+//        } else {
+//            Globals.model_snr_range_max = Integer.parseInt(snr_range_max_text.getHint().toString());
+//        }
         // - model import number of training samples
-        if (!TextUtils.isEmpty(num_training_sample_text.getText())) {
-            Globals.model_num_training_samples = Integer.parseInt(num_training_sample_text.getText().toString());
-        } else {
-            Globals.model_num_training_samples = Integer.parseInt(num_training_sample_text.getHint().toString());
-        }
+//        if (!TextUtils.isEmpty(num_training_sample_text.getText())) {
+//            Globals.model_num_training_samples = Integer.parseInt(num_training_sample_text.getText().toString());
+//        } else {
+//            Globals.model_num_training_samples = Integer.parseInt(num_training_sample_text.getHint().toString());
+//        }
         // model import number of internal components
         if (!TextUtils.isEmpty(num_inter_comp_text.getText())) {
             Globals.model_num_inter_comp = Integer.parseInt(num_inter_comp_text.getText().toString());
@@ -486,9 +478,9 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void uiFieldUpdate(TextView model_filename_view, EditText num_class_events_text,
-                               EditText clip_len_text, EditText num_overlaps_text,
-                               EditText snr_range_min_text, EditText snr_range_max_text,
-                               EditText num_training_sample_text, EditText cap_sample_rate_input,
+                               EditText clip_len_text, /*EditText num_overlaps_text,*/
+                               EditText snr_range_min_text, /*EditText snr_range_max_text,
+                               EditText num_training_sample_text,*/ EditText cap_sample_rate_input,
                                EditText cap_time_interval_input, Spinner cap_format_input,
                                EditText proc_fft_size_input, EditText proc_sample_rate_input,
                                EditText proc_num_time_frames_input, EditText proc_resolution_input,
@@ -501,17 +493,17 @@ public class SettingsActivity extends AppCompatActivity {
         // Model import
         num_class_events_text.setText(String.format("%d", Globals.model_num_class_events));
         clip_len_text.setText(String.format("%d", Globals.model_clip_len));
-        num_overlaps_text.setText(String.format("%d", Globals.model_num_overlaps));
+        //num_overlaps_text.setText(String.format("%d", Globals.model_num_overlaps));
         snr_range_min_text.setText(String.format("%d", Globals.model_snr_range_min));
-        snr_range_max_text.setText(String.format("%d", Globals.model_snr_range_max));
-        num_training_sample_text.setText(String.format("%d", Globals.model_num_training_samples));
-        model_filename_view.setText(String.format("dictW_cl%s_len%s_ol%s_snr(%s, %s)_tsize%s",
+        //snr_range_max_text.setText(String.format("%d", Globals.model_snr_range_max));
+        //num_training_sample_text.setText(String.format("%d", Globals.model_num_training_samples));
+        model_filename_view.setText(String.format("dictW_cl%s_len%s_snr%s",
                 num_class_events_text.getText().toString(),
                 clip_len_text.getText().toString(),
-                num_overlaps_text.getText().toString(),
-                snr_range_min_text.getText().toString(),
-                snr_range_max_text.getText().toString(),
-                num_training_sample_text.getText().toString()
+                //num_overlaps_text.getText().toString(),
+                snr_range_min_text.getText().toString()//,
+                //snr_range_max_text.getText().toString(),
+                //num_training_sample_text.getText().toString()
         ));
         // Capture
         cap_sample_rate_input.setText(String.format("%d", Globals.cap_sample_rate));

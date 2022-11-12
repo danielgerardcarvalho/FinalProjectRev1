@@ -16,7 +16,7 @@
     <string name="model_num_event_classes">\tNumber of event classes:</string>
     <string name="model_num_overlaps">\tNumber of overlaps:</string>
     <string name="model_clip_len">\tLength of training clips:</string>
-    <string name="model_snr_range">\tSNR range:</string>
+    <string name="model_snr_range">\tSNR:</string>
     <string name="model_training_size">\tNumber of samples used in training:</string>
     <string name="model_num_components">\tNumber of internal components:</string>
     <string name="model_num_iterations">\tNumber of iterations in training: - (unused)</string>
@@ -38,7 +38,7 @@
     <!-- Classification Settings -->
     <string name="classifier_fft_size">\tClassifier FFT size:</string>
     <string name="classifier_num_classes">\tNumber of detectable classes:</string>
-    <string name="classifier_num_inter_comp">\tNumber of internal components:</string>
+    <string name="classifier_num_inter_comp">\tDictionary length:</string>
     <string name="classifier_num_iters">\tNumber of internal iterations:</string>
     <!-- Plotting label -->
     <string name="progress_indicator_string">Detection progress: </string>

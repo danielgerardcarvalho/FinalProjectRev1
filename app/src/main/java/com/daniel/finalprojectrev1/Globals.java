@@ -3,6 +3,8 @@ package com.daniel.finalprojectrev1;
 import android.media.AudioFormat;
 import android.media.MediaRecorder;
 import android.os.Environment;
+import android.text.TextUtils;
+import android.widget.EditText;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,10 +48,10 @@ public class Globals {
     // Values
     public static int model_num_class_events;           // number of event classes in model
     public static int model_clip_len;                   // length of clip in model
-    public static int model_num_overlaps;               // number of overlaps in model
+    //public static int model_num_overlaps;               // number of overlaps in model
     public static int model_snr_range_min;              // snr range min in model
-    public static int model_snr_range_max;              // snr range max in model
-    public static int model_num_training_samples;       // number of training samples in model
+    //public static int model_snr_range_max;              // snr range max in model
+    public static int model_num_training_samples = 5;       // number of training samples in model
     public static int model_num_inter_comp;             // number of componenets in model
 
     /* UI Associated Capture Settings */
@@ -77,4 +79,40 @@ public class Globals {
     public static int classifier_num_classes;
     public static int classifier_num_inter_comp;
     public static int classifier_num_iters;
+
+    public static void loadDefaults(EditText cap_time, EditText num_iters) {
+        // Model import settings
+        model_num_class_events = 5;                     // number of event classes in model
+        model_clip_len = 15;                            // length of clip in model
+        model_snr_range_min = 10;                       // snr range min in model
+        model_num_training_samples = 5;                 // number of training samples in model
+        model_num_inter_comp = 20;                      // number of componenets in model
+
+        // Capture settings
+        cap_sample_rate = 20000;
+        if (!TextUtils.isEmpty(cap_time.getText())) {
+            cap_time_interval = Integer.parseInt(cap_time.getText().toString());
+        } else {
+            cap_time_interval = 15;
+        }
+        cap_format = AUDIO_FORMAT_INT16;
+
+        // Processing settings
+        proc_fft_size = 1024;
+        proc_sample_rate = cap_sample_rate;
+        proc_num_time_frames = cap_time_interval * proc_sample_rate;
+        proc_resolution = proc_sample_rate / proc_fft_size;
+        proc_window_time = proc_fft_size / (proc_sample_rate * 1.0);
+        proc_hop_time = proc_window_time / 2.0;
+
+        // Classifier settings
+        classifier_fft_size = 1024;
+        classifier_num_classes = 5;
+        classifier_num_inter_comp = 20;
+        if (!TextUtils.isEmpty(num_iters.getText())) {
+            classifier_num_iters = Integer.parseInt(num_iters.getText().toString());
+        } else {
+            classifier_num_iters = Integer.parseInt(num_iters.getHint().toString());
+        }
+    }
 }

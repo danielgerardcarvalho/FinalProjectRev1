@@ -8,5 +8,5 @@
     <path
         android:name="primary"
         android:fillColor="@color/annotation_1"
-        android:pathData="M14.5,0h1v30h-1z" />
+        android:pathData="M15,0h1v30h-1z" />
 </vector>

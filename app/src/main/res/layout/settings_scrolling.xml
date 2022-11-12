@@ -55,24 +55,24 @@
                 android:hint="5"
                 android:textSize="14sp" />
 
-            <TextView
-                android:id="@+id/view_model_num_overlaps"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/model_num_overlaps"
-                android:textColor="@color/heading_1" />
+<!--            <TextView-->
+<!--                android:id="@+id/view_model_num_overlaps"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="@string/model_num_overlaps"-->
+<!--                android:textColor="@color/heading_1" />-->
 
-            <EditText
-                android:id="@+id/input_model_import_num_overlaps"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:autoText="false"
-                android:ems="10"
-                android:inputType="number"
-                android:singleLine="true"
-                android:hint="2"
-                android:textSize="14sp" />
+<!--            <EditText-->
+<!--                android:id="@+id/input_model_import_num_overlaps"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_weight="1"-->
+<!--                android:autoText="false"-->
+<!--                android:ems="10"-->
+<!--                android:inputType="number"-->
+<!--                android:singleLine="true"-->
+<!--                android:hint="2"-->
+<!--                android:textSize="14sp" />-->
 
             <TextView
                 android:id="@+id/view_model_clip_len"
@@ -100,54 +100,54 @@
                 android:text="@string/model_snr_range"
                 android:textColor="@color/heading_1" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
-
-                <EditText
-                    android:id="@+id/input_model_import_snr_range_min"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:autoText="false"
-                    android:ems="10"
-                    android:inputType="numberSigned|number"
-                    android:singleLine="true"
-                    android:hint="0"
-                    android:textSize="14sp" />
-
-                <EditText
-                    android:id="@+id/input_model_import_snr_range_max"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:autoText="false"
-                    android:ems="10"
-                    android:inputType="numberSigned|number"
-                    android:singleLine="true"
-                    android:hint="10"
-                    android:textSize="14sp" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/view_model_training_size"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/model_training_size"
-                android:textColor="@color/heading_1" />
+<!--            <LinearLayout-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="match_parent"-->
+<!--                android:orientation="horizontal">-->
 
             <EditText
-                android:id="@+id/input_model_import_training_size"
+                android:id="@+id/input_model_import_snr_range_min"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:autoText="false"
                 android:ems="10"
-                android:inputType="number"
+                android:inputType="numberSigned|number"
                 android:singleLine="true"
-                android:hint="12"
+                android:hint="0"
                 android:textSize="14sp" />
+
+<!--                <EditText-->
+<!--                    android:id="@+id/input_model_import_snr_range_max"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_weight="1"-->
+<!--                    android:autoText="false"-->
+<!--                    android:ems="10"-->
+<!--                    android:inputType="numberSigned|number"-->
+<!--                    android:singleLine="true"-->
+<!--                    android:hint="10"-->
+<!--                    android:textSize="14sp" />-->
+<!--            </LinearLayout>-->
+
+<!--            <TextView-->
+<!--                android:id="@+id/view_model_training_size"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="@string/model_training_size"-->
+<!--                android:textColor="@color/heading_1" />-->
+
+<!--            <EditText-->
+<!--                android:id="@+id/input_model_import_training_size"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_weight="1"-->
+<!--                android:autoText="false"-->
+<!--                android:ems="10"-->
+<!--                android:inputType="number"-->
+<!--                android:singleLine="true"-->
+<!--                android:hint="12"-->
+<!--                android:textSize="14sp" />-->
 
             <TextView
                 android:id="@+id/view_model_num_components"
@@ -168,25 +168,25 @@
                 android:hint="20"
                 android:textSize="14sp" />
 
-            <TextView
-                android:id="@+id/view_model_num_iterations"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/model_num_iterations"
-                android:textColor="@color/heading_1" />
+<!--            <TextView-->
+<!--                android:id="@+id/view_model_num_iterations"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="@string/model_num_iterations"-->
+<!--                android:textColor="@color/heading_1" />-->
 
-            <EditText
-                android:id="@+id/input_model_import_num_iterations"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:autoText="false"
-                android:ems="10"
-                android:focusable="false"
-                android:inputType="number"
-                android:singleLine="true"
-                android:hint="50"
-                android:textSize="14sp" />
+<!--            <EditText-->
+<!--                android:id="@+id/input_model_import_num_iterations"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_weight="1"-->
+<!--                android:autoText="false"-->
+<!--                android:ems="10"-->
+<!--                android:focusable="false"-->
+<!--                android:inputType="number"-->
+<!--                android:singleLine="true"-->
+<!--                android:hint="50"-->
+<!--                android:textSize="14sp" />-->
 
         </LinearLayout>
 
@@ -576,7 +576,7 @@
                 android:layout_weight="1"
                 android:autoText="false"
                 android:ems="10"
-                android:hint="5"
+                android:hint="12"
                 android:inputType="number"
                 android:singleLine="true"
                 android:textSize="14sp" />

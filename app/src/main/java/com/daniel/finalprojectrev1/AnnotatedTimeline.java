@@ -14,13 +14,9 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.ScatterData;
 import com.github.mikephil.charting.data.ScatterDataSet;
-import com.github.mikephil.charting.formatter.IAxisValueFormatter;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet;
-import com.github.mikephil.charting.utils.ColorTemplate;
-
-import org.ojalgo.matrix.store.Primitive64Store;
 
 import java.util.ArrayList;
 
@@ -72,7 +68,11 @@ public class AnnotatedTimeline {
         // Setting minimum x-axis label value
         this.label_value_min = 0.0;
         // Setting number of discrete visible labels
-        this.num_labels = 15;
+        int temp = 15;
+        if (temp > Globals.cap_time_interval) {
+            temp = Globals.cap_time_interval;
+        }
+        this.num_labels = temp;
 
         constructPlot();
     }
@@ -81,6 +81,7 @@ public class AnnotatedTimeline {
         // Configuring the plot
         // Setting the visibility of the plot
         plot.setVisibility(View.VISIBLE);
+//        plot.setDrawBorders(true);
         // Configure Axes
 
         /* Y - Axis */
@@ -128,6 +129,7 @@ public class AnnotatedTimeline {
 //        xl.setDrawGridLines(true);
 
         XAxis x_axis = plot.getXAxis();
+        x_axis.setAvoidFirstLastClipping(true);
         x_axis.setPosition(XAxis.XAxisPosition.BOTTOM);
         x_axis.setEnabled(true);
         x_axis.setLabelCount(num_labels);
@@ -207,8 +209,8 @@ public class AnnotatedTimeline {
             for (int j = 0; j < data[i].length; j++) {
                 // Converting data to appropriate form
                 if (data[i][j] != 0) {
-//                    Entry temp = new Entry((int) (data[i][j] * j), (float) (i + 0.5));
-                    Entry temp = new Entry((float) (data[i][j] * 15/data[i].length * j), (float) (i + 0.5));
+                    Entry temp = new Entry((float) (data[i][j] * num_labels/data[i].length * j), (float) (i + 0.5));
+//                    Entry temp = new Entry((float) (data[i][j] * 15/data[i].length * j), (float) (i + 0.5));
                     temp.setIcon(icon_array.get(i));
                     temp_entry.add(temp);
 //                    temp_entry.add(new Entry((int) (data.get(i, j) * j),  (float) (i + 0.5)));
