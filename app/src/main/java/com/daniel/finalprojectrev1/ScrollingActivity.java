@@ -16,6 +16,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -112,6 +113,7 @@ public class ScrollingActivity extends AppCompatActivity {
         /* Basic User Settings */
         EditText cap_time_interval_input = (EditText) findViewById(R.id.input_cap_time_interval);
         EditText classifier_num_iters_input = (EditText) findViewById(R.id.input_classifier_num_iters);
+        Switch plotting_spectrogram_switch = (Switch) findViewById(R.id.switch_spectrogram_switch);
 
         /* Configure Runnables */
         configureRunnables();
@@ -187,7 +189,12 @@ public class ScrollingActivity extends AppCompatActivity {
 
                 // Start plotting sub-system
                 capture_plotting_flag = false;
-                processing_plotting_flag = true;
+                // Checking for switch status
+                if (plotting_spectrogram_switch.isChecked()) {
+                    processing_plotting_flag = true;
+                } else{
+                    processing_plotting_flag = false;
+                }
                 classifier_plotting_flag = true;
                 configurePlotting();
 

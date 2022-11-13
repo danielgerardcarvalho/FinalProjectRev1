@@ -40,6 +40,8 @@
     <string name="classifier_num_classes">\tNumber of detectable classes:</string>
     <string name="classifier_num_inter_comp">\tDictionary length:</string>
     <string name="classifier_num_iters">\tNumber of internal iterations:</string>
+    <!-- Plotting settings -->
+    <string name="plotting_spectrogram_switch">\tEnable spectrogram plot:</string>
     <!-- Plotting label -->
     <string name="progress_indicator_string">Detection progress: </string>
     <string name="plotting_time_domain">\tTime Domain Audio:</string>

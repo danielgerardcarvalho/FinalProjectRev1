@@ -135,6 +135,14 @@
 
         </LinearLayout>
 
+        <Switch
+            android:id="@+id/switch_spectrogram_switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/plotting_spectrogram_switch"
+            android:textColor="@color/heading_1"
+            android:checked="false"/>
+
         <TextView
             android:id="@+id/view_plotting_time_domain"
             android:layout_width="wrap_content"
