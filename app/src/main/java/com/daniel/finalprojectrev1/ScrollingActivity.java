@@ -26,10 +26,14 @@ import com.daniel.finalprojectrev1.databinding.ActivityScrollingBinding;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.gson.Gson;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -147,6 +151,15 @@ public class ScrollingActivity extends AppCompatActivity {
                 if (!Globals.sys_settings_flag) {
                     // Load default settings
                     Globals.loadDefaults(cap_time_interval_input, classifier_num_iters_input);
+                    // Import dictionaries
+                    String dictionaryFilename = String.format("dictW_cl%d_len%d_snr%d",
+                            Globals.classifier_num_classes,
+                            Globals.model_clip_len,
+                            Globals.model_snr_range_min);
+                    importDictionary(dictionaryFilename);
+                    // Interface update
+                    uiFieldUpdate(cap_time_interval_input, classifier_num_iters_input);
+                    Globals.sys_settings_flag = true;
                 }
 
                 // Update Settings
@@ -293,6 +306,41 @@ public class ScrollingActivity extends AppCompatActivity {
         }
     }
 
+    private void importDictionary(String filename) {
+        Log.v("ImportModelFile", "Attempting to import model file...");
+        Log.v("ImportModelFile", "File path: " + Globals.MODEL_DIR_LOC + filename +
+                Globals.MODEL_FILE_EXT);
+        NMF.NMF_Mini nmf_mini = null;
+        File file = new File(Globals.MODEL_DIR_LOC + filename + Globals.MODEL_FILE_EXT);
+        try{
+            // Final check for files existence
+            if (!file.exists()) {
+                Log.e("ImportModelFileERROR", "File does not exist");
+                return;
+            }
+            // Reading in the JSON file
+            Reader reader = new FileReader(file);
+            // Loading the dictionaries
+            nmf_mini = new Gson().fromJson(reader, NMF.NMF_Mini.class);
+            Log.v("ImportModelFile", "Imported model from file");
+        } catch (Exception e) {
+            Log.e("ImportModelFileERROR", "Failed to import model from file");
+            e.printStackTrace();
+        }
+
+        Globals.classifier_imported_nmf_model = nmf_mini;
+
+        Log.v("Classifier", String.format("Imported values:" +
+                        "\n\tW1 (shape): (%d,%d)\n\tW2 (shape): (%d, %d)\n\tW1 example value: %f" +
+                        "\n\tW2 example value: %f",
+                Globals.classifier_imported_nmf_model.W1.length,
+                Globals.classifier_imported_nmf_model.W1[0].length,
+                Globals.classifier_imported_nmf_model.W2.length,
+                Globals.classifier_imported_nmf_model.W2[0].length,
+                Globals.classifier_imported_nmf_model.W1[0][0],
+                Globals.classifier_imported_nmf_model.W2[0][0]));
+        return;
+    }
 
     // Permissions
     private void checkAllPermissions(){

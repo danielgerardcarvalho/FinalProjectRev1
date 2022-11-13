@@ -84,7 +84,7 @@ public class Globals {
         // Model import settings
         model_num_class_events = 5;                     // number of event classes in model
         model_clip_len = 15;                            // length of clip in model
-        model_snr_range_min = 10;                       // snr range min in model
+        model_snr_range_min = 0;                        // snr range min in model
         model_num_training_samples = 5;                 // number of training samples in model
         model_num_inter_comp = 20;                      // number of componenets in model
 
@@ -106,9 +106,9 @@ public class Globals {
         proc_hop_time = proc_window_time / 2.0;
 
         // Classifier settings
-        classifier_fft_size = 1024;
+        classifier_fft_size = 512;
         classifier_num_classes = 5;
-        classifier_num_inter_comp = 20;
+        classifier_num_inter_comp = 20 * 5;
         if (!TextUtils.isEmpty(num_iters.getText())) {
             classifier_num_iters = Integer.parseInt(num_iters.getText().toString());
         } else {

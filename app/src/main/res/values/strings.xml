@@ -4,12 +4,12 @@
     <string name="title_activity_settings">Settings</string>
 
     <!-- Titles -->
-    <string name="model_import_settings_title">\tModel Import Settings</string>
+    <string name="model_import_settings_title">\tDictionary Import Settings</string>
     <string name="cap_settings_title">\tCapture Settings</string>
     <string name="proc_settings_title">\tProcessing Settings</string>
     <string name="classifier_settings_title">\tClassifier Settings</string>
     <string name="classification_settings_title">\tClassification Settings</string>
-    <string name="model_filename_title">\tModel Import Filename:</string>
+    <string name="model_filename_title">\tDictionary Import Filename:</string>
     <string name="plotting_title">\tOutput Plots</string>
 
     <!-- Import Settings-->
@@ -22,7 +22,7 @@
     <string name="model_num_iterations">\tNumber of iterations in training: - (unused)</string>
     <string name="model_filename_marker">Indicates validity of filename</string>
     <!-- Capture Settings -->
-    <string name="cap_import_file">\tImport file:</string>
+    <string name="cap_import_file">\tImport soundscape file:</string>
     <string name="cap_import_file_select">\t Select a file</string>
     <string name="cap_sample_rate">\tCapture sample rate:</string>
     <string name="cap_time_interval">\tCapture time interval:</string>
